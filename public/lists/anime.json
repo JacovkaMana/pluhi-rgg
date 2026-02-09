@@ -1,0 +1,10 @@
+ {
+    "id": "anime",
+    "name": "Аниме",
+    "icon": "🌸",
+    "games": [
+      "Tales of Berseria",
+      "AI: The Somnium Files",
+      "SMT 5"
+    ]
+  }

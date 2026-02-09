@@ -1,0 +1,20 @@
+{
+  "files": [
+    "action.json",
+    "adventure.json",
+    "anime.json",
+    "cozy.json",
+    "drummer.json",
+    "horror.json",
+    "jokerge.json",
+    "old.json",
+    "platformer.json",
+    "puzzle.json",
+    "read.json",
+    "roguelike.json",
+    "rpg.json",
+    "shoot.json",
+    "sim.json",
+    "strategy.json"
+  ]
+}

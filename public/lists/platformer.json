@@ -1,0 +1,22 @@
+  {
+    "id": "platformer",
+    "name": "Платформер",
+    "icon": "⬆️",
+    "games": [
+      "Hollow Knight",
+      "Bloody Trapland 2",
+      "Ghost 1.0",
+      "Mark of the Ninja",
+      "LIMBO",
+      "Super Meat Boy",
+      "Rogue Legacy 2",
+      "Teslagrad",
+      "Celeste",
+      "Ori and the Blind Forest",
+      "Katana Zero",
+      "Shovel Knight",
+      "Mirror's Edge",
+      "Momodora Reverie Under The Moonlight",
+      "Spelunky 2"
+    ]
+  }

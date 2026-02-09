@@ -1,0 +1,8 @@
+  {
+    "id": "simulator",
+    "name": "Симуляторы",
+    "icon": "🎮",
+    "games": [
+      "Factorio"
+    ]
+  }

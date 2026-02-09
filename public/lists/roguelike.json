@@ -1,0 +1,12 @@
+  {
+    "id": "roguelike",
+    "name": "Рогалик",
+    "icon": "♻️",
+    "games": [
+      "Clover Pit",
+      "Blazblue Entropy Effect",
+      "Enter the Gungeon",
+      "FTL: Faster Than Light",
+      "Rogue Legacy 2"
+    ]
+  }

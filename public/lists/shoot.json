@@ -1,0 +1,29 @@
+{
+    "id": "shooter",
+    "name": "Стрелялка",
+    "icon": "🔫",
+    "games": [
+      "Furi",
+      "Jedi Knight: Jedi Academy",
+      "Red Orchestra 2: Heroes of Stalingrad",
+      "ULTRAKILL",
+      "RUINER",
+      "Enter the Gungeon",
+      "Peripeteia",
+      "ACE COMBAT™ 7: SKIES UNKNOWN",
+      "Fallout 4",
+      "Fallout New Vegas",
+      "Postal 2",
+      "Cyberpunk 2077",
+      "Metro 2033",
+      "Half-Life 2",
+      "Saints Row 3",
+      "Watch_Dogs",
+      "Beyond Citadel",
+      "Bioshock",
+      "Resident Evil 5",
+      "Doom 2",
+      "Doom",
+      "Half-Life"
+    ]
+  }

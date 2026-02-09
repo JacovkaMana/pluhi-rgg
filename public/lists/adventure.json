@@ -1,0 +1,12 @@
+  {
+    "id": "adventure",
+    "name": "Адвенчура",
+    "icon": "🗺️",
+    "games": [
+      "Clair Obscur: Expidition 33",
+      "Moonlighter",
+       "Deponia",
+      "Edna Harvey Harvey's New Eyes",
+      "Anna's Quest"
+    ]
+  }

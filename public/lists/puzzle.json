@@ -1,0 +1,15 @@
+{
+    "id": "puzzle",
+    "name": "Головоломки",
+    "icon": "🧩",
+    "games": [
+      "Ghost Trick",
+      "Urban Myth Dissolution Center",
+      "Void Stranger",
+      "Professor Layton Curious Village",
+      "Blue Prince",
+      "BattleBlock",
+      "Gunpoint",
+      "RONIN"
+    ]
+  }

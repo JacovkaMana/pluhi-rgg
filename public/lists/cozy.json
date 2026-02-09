@@ -1,0 +1,17 @@
+{
+  "id": "ps1",
+  "name": "PlayStation",
+  "icon": "💿",
+  "games": [
+    "Final Fantasy VII",
+    "Metal Gear Solid",
+    "Castlevania: Symphony of the Night",
+    "Resident Evil 2",
+    "Crash Bandicoot",
+    "Spyro the Dragon",
+    "Tekken 3",
+    "Gran Turismo",
+    "Silent Hill",
+    "Twisted Metal 2"
+  ]
+}

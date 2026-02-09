@@ -1,0 +1,12 @@
+ {
+    "id": "horror",
+    "name": "Хоррор",
+    "icon": "👻",
+    "games": [
+      "SCP: Containment Breach Remastered",
+      "The Coffin Of Andy and Leyley",
+      "Amnesia The Dark Descent",
+      "Cry of Fear",
+      "Fear and Hunger"
+    ]
+  }

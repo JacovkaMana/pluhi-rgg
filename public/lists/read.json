@@ -1,0 +1,20 @@
+  {
+    "id": "reading",
+    "name": "Читать",
+    "icon": "📖",
+    "games": [
+      "Urban Myth Dissolution Center",
+      "Dispatch",
+      "SHUTEN ORDER",
+      "Danganronpa 2: Goodbye Despair",
+      "The Great Ace Attorney Chronicles",
+      "Disco Elysium",
+      "Raging Loop",
+      "To the moon",
+      "Catherine Classic",
+      "EverHood",
+      "Life is Strange",
+      "Hellblade",
+      "Undertale"
+    ]
+  }
