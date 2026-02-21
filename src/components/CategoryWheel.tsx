@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { isIconUrl } from "@/hooks/useGameLists";
 
 interface Category {
   id: string;
@@ -166,7 +167,21 @@ export const CategoryWheel = ({ categories, isSpinning, onSpinComplete, onCatego
             
             {/* Middle: Category icon */}
             <div className="mt-4 mb-2">
-              <span className="text-3xl">{category.icon}</span>
+              {isIconUrl(category.icon) ? (
+                <img
+                  src={category.icon}
+                  alt={category.name}
+                  className="w-8 h-8 object-contain"
+                  onError={(e) => {
+                    // Fallback to emoji if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement!.innerHTML = `<span class="text-3xl">❓</span>`;
+                  }}
+                />
+              ) : (
+                <span className="text-3xl">{category.icon}</span>
+              )}
             </div>
             
             {/* Category name */}

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { isIconUrl } from "@/hooks/useGameLists";
 
 interface GameList {
   id: string;
@@ -27,7 +28,21 @@ export const GameListSelector = ({ lists, selectedId, onSelect }: GameListSelect
             selectedId === list.id && "border-primary bg-secondary glow-primary"
           )}
         >
-          <span className="text-xl">{list.icon}</span>
+          {isIconUrl(list.icon) ? (
+            <img
+              src={list.icon}
+              alt={list.name}
+              className="w-5 h-5 object-contain"
+              onError={(e) => {
+                // Fallback to emoji if image fails to load
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = `<span class="text-xl">❓</span>`;
+              }}
+            />
+          ) : (
+            <span className="text-xl">{list.icon}</span>
+          )}
           <span className="text-sm font-medium text-foreground">{list.name}</span>
           <span className="text-xs text-muted-foreground">({list.games.length})</span>
         </button>

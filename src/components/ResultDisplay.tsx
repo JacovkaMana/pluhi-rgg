@@ -8,7 +8,11 @@ interface ResultDisplayProps {
 
 export const ResultDisplay = ({ game, listName }: ResultDisplayProps) => {
   const searchUrl = game 
-    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(game + " gameplay")}`
+    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(game + " longplay")}`
+    : null;
+
+  const hltbUrl = game 
+    ? `https://howlongtobeat.com/?q=${encodeURIComponent(game)}`
     : null;
 
   return (
@@ -34,9 +38,16 @@ export const ResultDisplay = ({ game, listName }: ResultDisplayProps) => {
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-primary hover:underline text-sm"
-          >
-            <ExternalLink className="w-4 h-4" />
+          ><ExternalLink className="w-4 h-4" />
             Watch gameplay on YouTube
+          </a>
+          <a
+            href={hltbUrl || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-primary hover:underline text-sm"
+          ><ExternalLink className="w-4 h-4" />
+                     How long to beat
           </a>
         </motion.div>
       )}

@@ -7,6 +7,11 @@ export interface GameList {
   games: string[];
 }
 
+// Helper function to check if icon is a URL
+export const isIconUrl = (icon: string): boolean => {
+  return icon.startsWith("http://") || icon.startsWith("https://");
+};
+
 export const useGameLists = () => {
   const [lists, setLists] = useState<GameList[]>([]);
   const [loading, setLoading] = useState(true);
