@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
-import { CustomWheel } from "@/components/CustomWheel";
+import { useState, useEffect, useCallback } from "react";
+import { supabase, CustomWheel as SupabaseWheel, WheelOption } from "@/lib/supabase";
+import { CustomWheel as ComponentWheel } from "@/components/CustomWheel";
 
-const STORAGE_KEY = "game-roulette-custom-wheels";
-
-// Default custom wheels
-const defaultWheels: CustomWheel[] = [
+// Default custom wheels (fallback when Supabase is not available)
+const defaultWheels: ComponentWheel[] = [
   {
     id: "good_event",
     name: "Хороший ивент",
@@ -131,58 +130,123 @@ const defaultWheels: CustomWheel[] = [
 ];
 
 export const useCustomWheels = () => {
-  const [wheels, setWheels] = useState<CustomWheel[]>([]);
+  const [wheels, setWheels] = useState<ComponentWheel[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadWheels = () => {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setWheels(parsed);
-        } else {
-          setWheels(defaultWheels);
-        }
-      } catch (error) {
-        console.error("Failed to load custom wheels:", error);
-        setWheels(defaultWheels);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchWheels = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch wheels from Supabase
+      const { data: wheelData, error: wheelError } = await supabase
+        .from("custom_wheels")
+        .select("*")
+        .order("name");
 
-    loadWheels();
+      if (wheelError) throw wheelError;
+
+      if (!wheelData || wheelData.length === 0) {
+        // Use default wheels if no data in Supabase
+        setWheels(defaultWheels);
+        return;
+      }
+
+      // Fetch options for each wheel
+      const wheelsWithOptions: ComponentWheel[] = await Promise.all(
+        wheelData.map(async (wheel) => {
+          const { data: optionsData } = await supabase
+            .from("wheel_options")
+            .select("*")
+            .eq("wheel_id", wheel.id)
+            .order("display_order");
+
+          return {
+            id: wheel.id,
+            name: wheel.name,
+            icon: wheel.icon,
+            options: (optionsData || []).map((opt: WheelOption) => ({
+              id: opt.id,
+              name: opt.name,
+              icon: opt.icon,
+            })),
+          };
+        })
+      );
+
+      setWheels(wheelsWithOptions);
+    } catch (error) {
+      console.error("Failed to load custom wheels from Supabase:", error);
+      // Fallback to default wheels on error
+      setWheels(defaultWheels);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const saveWheels = (newWheels: CustomWheel[]) => {
+  useEffect(() => {
+    fetchWheels();
+  }, [fetchWheels]);
+
+  const saveWheels = async (newWheels: ComponentWheel[]) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newWheels));
+      // Delete all existing wheels and options
+      const { data: existingWheels } = await supabase
+        .from("custom_wheels")
+        .select("id");
+
+      if (existingWheels && existingWheels.length > 0) {
+        await supabase
+          .from("custom_wheels")
+          .delete()
+          .in("id", existingWheels.map((w) => w.id));
+      }
+
+      // Insert new wheels and options
+      for (const wheel of newWheels) {
+        await supabase.from("custom_wheels").insert({
+          id: wheel.id,
+          name: wheel.name,
+          icon: wheel.icon,
+          updated_at: new Date().toISOString(),
+        });
+
+        for (let i = 0; i < wheel.options.length; i++) {
+          const option = wheel.options[i];
+          await supabase.from("wheel_options").insert({
+            id: option.id,
+            wheel_id: wheel.id,
+            name: option.name,
+            icon: option.icon || "",
+            display_order: i,
+          });
+        }
+      }
+
       setWheels(newWheels);
     } catch (error) {
       console.error("Failed to save custom wheels:", error);
     }
   };
 
-  const addWheel = (wheel: CustomWheel) => {
+  const addWheel = async (wheel: ComponentWheel) => {
     const newWheels = [...wheels, wheel];
-    saveWheels(newWheels);
+    await saveWheels(newWheels);
   };
 
-  const updateWheel = (id: string, updatedWheel: Partial<CustomWheel>) => {
+  const updateWheel = async (id: string, updatedWheel: Partial<ComponentWheel>) => {
     const newWheels = wheels.map((w) =>
       w.id === id ? { ...w, ...updatedWheel } : w
     );
-    saveWheels(newWheels);
+    await saveWheels(newWheels);
   };
 
-  const deleteWheel = (id: string) => {
+  const deleteWheel = async (id: string) => {
     const newWheels = wheels.filter((w) => w.id !== id);
-    saveWheels(newWheels);
+    await saveWheels(newWheels);
   };
 
-  const resetToDefaults = () => {
-    saveWheels(defaultWheels);
+  const resetToDefaults = async () => {
+    await saveWheels(defaultWheels);
   };
 
   return {
@@ -192,5 +256,6 @@ export const useCustomWheels = () => {
     updateWheel,
     deleteWheel,
     resetToDefaults,
+    refetch: fetchWheels,
   };
 };

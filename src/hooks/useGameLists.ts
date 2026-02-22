@@ -1,50 +1,88 @@
-import { useState, useEffect } from "react";
-
-export interface GameList {
-  id: string;
-  name: string;
-  icon: string;
-  games: string[];
-}
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase, GameCategory, Game } from "@/lib/supabase";
 
 // Helper function to check if icon is a URL
 export const isIconUrl = (icon: string): boolean => {
   return icon.startsWith("http://") || icon.startsWith("https://");
 };
 
+// Extended GameCategory with games array (computed from separate games table)
+export interface GameCategoryWithGames extends GameCategory {
+  games: string[];
+}
+
 export const useGameLists = () => {
-  const [lists, setLists] = useState<GameList[]>([]);
+  const [categories, setCategories] = useState<GameCategory[]>([]);
+  const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadLists = async () => {
-      try {
-        // Fetch the index file
-        const indexRes = await fetch("/lists/_index.json");
-        if (!indexRes.ok) throw new Error("Failed to load lists index");
-        const index = await indexRes.json();
+  const fetchGameLists = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch both categories and games in parallel
+      const [categoriesRes, gamesRes] = await Promise.all([
+        supabase.from("game_categories").select("*").order("name"),
+        supabase.from("games").select("*").order("name")
+      ]);
 
-        // Fetch all list files in parallel
-        const listPromises = index.files.map(async (file: string) => {
-          console.log(file)
-          const res = await fetch(`/lists/${file}`);
-          console.log(res)
-          if (!res.ok) throw new Error(`Failed to load ${file}`);
-          return res.json();
-        });
+      if (categoriesRes.error) throw categoriesRes.error;
+      if (gamesRes.error) throw gamesRes.error;
 
-        const loadedLists = await Promise.all(listPromises);
-        setLists(loadedLists);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadLists();
+      setCategories(categoriesRes.data || []);
+      setGames(gamesRes.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { lists, loading, error };
+  useEffect(() => {
+    fetchGameLists();
+  }, [fetchGameLists]);
+
+  // Compute categories with their games
+  const lists = useMemo((): GameCategoryWithGames[] => {
+    return categories.map((category) => ({
+      ...category,
+      games: games
+        .filter((game) => game.category_id === category.id)
+        .map((game) => game.name)
+    }));
+  }, [categories, games]);
+
+  // Get a specific category by ID
+  const getCategoryById = useCallback(
+    (id: string): GameCategoryWithGames | undefined => {
+      return lists.find((list) => list.id === id);
+    },
+    [lists]
+  );
+
+  // Get a specific game from a category
+  const getGameFromCategory = useCallback(
+    (categoryId: string, gameIndex: number): string | undefined => {
+      const category = getCategoryById(categoryId);
+      if (!category || !category.games) return undefined;
+      return category.games[gameIndex];
+    },
+    [getCategoryById]
+  );
+
+  // Get all games across all categories
+  const getAllGames = useCallback((): string[] => {
+    return lists.flatMap((list) => list.games || []);
+  }, [lists]);
+
+  return {
+    lists,
+    loading,
+    error,
+    refetch: fetchGameLists,
+    getCategoryById,
+    getGameFromCategory,
+    getAllGames,
+  };
 };

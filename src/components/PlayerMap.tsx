@@ -1,9 +1,11 @@
-import { usePlayers, Player } from "@/hooks/usePlayers";
+import { usePlayers } from "@/hooks/usePlayers";
+import { Player } from "@/lib/supabase";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { getTileConfig, getTileType, TileType } from "@/lib/tileConfig";
+import { getTileConfig, getTileType, TileType, MINUS_TILES_START, MINUS_TILES_END, ZERO_TILE } from "@/lib/tileConfig";
 
 const TOTAL_CELLS = 100;
+const MINUS_CELLS = 20;
 const CELLS_PER_ROW = 10;
 
 // Calculate cell position accounting for snake pattern (like board games)
@@ -31,11 +33,16 @@ const Cell = ({ number, players }: CellProps) => {
         return 'bg-gradient-to-br from-yellow-400/20 to-amber-500/20 border-yellow-500/50 hover:from-yellow-400/30 hover:to-amber-500/30';
       case 'red':
         return 'bg-gradient-to-br from-red-500/20 to-rose-600/20 border-red-500/50 hover:from-red-500/30 hover:to-rose-600/30';
+      case 'minus':
+        return 'bg-gradient-to-br from-violet-500/20 to-purple-600/20 border-violet-500/50 hover:from-violet-500/30 hover:to-purple-600/30';
       default:
         return 'bg-secondary/30 hover:bg-secondary/50';
     }
   };
 
+  // Display number: show negative sign for minus tiles
+  const displayNumber = number < 0 ? `${number}` : number;
+  
   return (
     <div
       className={cn(
@@ -45,13 +52,22 @@ const Cell = ({ number, players }: CellProps) => {
         hasPlayers && "ring-2 ring-primary/50 ring-offset-2 ring-offset-secondary/50"
       )}
     >
-      <span className="absolute top-1 left-1 text-[10px] text-muted-foreground font-mono">
-        {number}
+      <span className={cn(
+        "absolute top-1 left-1 text-[10px] text-muted-foreground font-mono",
+        tileType === 'minus' && "text-violet-500 font-bold"
+      )}>
+        {displayNumber}
       </span>
       
       {tileConfig.label && (
         <span className="absolute top-1 right-1 text-xs">
           {tileConfig.label}
+        </span>
+      )}
+      
+      {tileType === 'minus' && tileConfig.value && (
+        <span className="text-xs text-violet-500 font-bold">
+          −{Math.abs(tileConfig.value)}
         </span>
       )}
       
@@ -130,30 +146,48 @@ export const PlayerMap = () => {
   }
 
   // Group players by their score (position on board)
+  // Handle both negative (-20 to -1), zero, and positive (1-100) positions
   const playersByPosition = players.reduce((acc, player) => {
-    const pos = Math.min(Math.max(player.score, 1), TOTAL_CELLS);
+    let pos: number;
+    if (player.score < 0) {
+      // Negative scores go to minus tiles
+      pos = Math.max(player.score, MINUS_TILES_START);
+    } else if (player.score === 0) {
+      // Zero goes to tile 0
+      pos = ZERO_TILE;
+    } else {
+      // Positive scores go to tiles 1-100
+      pos = Math.min(Math.max(player.score, 1), TOTAL_CELLS);
+    }
     if (!acc[pos]) acc[pos] = [];
     acc[pos].push(player);
     return acc;
   }, {} as Record<number, Player[]>);
 
-  // Build grid rows (from top to bottom, but cells numbered from bottom)
+  // Build grid rows for main board (from top to bottom, but cells numbered from bottom)
   const rows: number[][] = [];
   for (let row = 0; row < TOTAL_CELLS / CELLS_PER_ROW; row++) {
     const startCell = TOTAL_CELLS - row * CELLS_PER_ROW;
     const rowCells: number[] = [];
     for (let col = 0; col < CELLS_PER_ROW; col++) {
       // Snake pattern
-      const cell = row % 2 === 0 
-        ? startCell - col 
+      const cell = row % 2 === 0
+        ? startCell - col
         : startCell - (CELLS_PER_ROW - 1 - col);
       rowCells.push(cell);
     }
     rows.push(rowCells);
   }
 
+  // Build minus tiles row (-1 to -40, displayed left to right)
+  const minusRow: number[] = [];
+  for (let i = MINUS_TILES_END; i >= MINUS_TILES_START; i--) {
+    minusRow.push(i);
+  }
+
   return (
     <div className="w-full max-w-4xl mx-auto">
+      {/* Main board: tiles 1-100 */}
       <div className="grid grid-cols-10 gap-1 p-4 bg-card border border-border rounded-xl">
         {rows.map((rowCells, rowIdx) => (
           rowCells.map((cellNum) => (
@@ -163,6 +197,28 @@ export const PlayerMap = () => {
               players={playersByPosition[cellNum] || []}
             />
           ))
+        ))}
+      </div>
+
+      {/* Zero tile */}
+      <div className="mt-2 flex justify-center">
+        <div className="w-16">
+          <Cell
+            key={ZERO_TILE}
+            number={ZERO_TILE}
+            players={playersByPosition[ZERO_TILE] || []}
+          />
+        </div>
+      </div>
+
+      {/* Minus tiles row: -20 to -1 */}
+      <div className="mt-2 grid grid-cols-10 gap-1 p-4 bg-card border border-border rounded-xl">
+        {minusRow.map((cellNum) => (
+          <Cell
+            key={cellNum}
+            number={cellNum}
+            players={playersByPosition[cellNum] || []}
+          />
         ))}
       </div>
       
@@ -178,6 +234,14 @@ export const PlayerMap = () => {
           <div className="flex items-center gap-1">
             <div className="w-4 h-4 rounded bg-gradient-to-br from-red-500/20 to-rose-600/20 border border-red-500/50" />
             <span className="text-muted-foreground">⚠ Danger (81-100)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded bg-gradient-to-br from-violet-500/20 to-purple-600/20 border border-violet-500/50" />
+            <span className="text-muted-foreground">− Minus (−20 to −1)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded bg-gradient-to-br from-gray-500/20 to-gray-600/20 border border-gray-500/50" />
+            <span className="text-muted-foreground">0 Zero</span>
           </div>
         </div>
       </div>

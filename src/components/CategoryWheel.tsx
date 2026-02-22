@@ -34,6 +34,7 @@ export const CategoryWheel = ({ categories, isSpinning, onSpinComplete, onCatego
       
       // Generate a random starting index
       const randomStartIndex = Math.floor(Math.random() * categories.length);
+      console.log(randomStartIndex);
       let currentIndex = randomStartIndex;
       
       const maxSpeed = 800;
