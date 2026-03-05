@@ -97,6 +97,66 @@
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Slot machine specific animations */
+@keyframes slot-blur {
+  0% {
+    filter: blur(0px);
+    opacity: 1;
+  }
+  50% {
+    filter: blur(2px);
+    opacity: 0.8;
+  }
+  100% {
+    filter: blur(0px);
+    opacity: 1;
+  }
+}
+
+@keyframes slot-stop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.slot-spinning {
+  animation: slot-blur 0.1s ease-in-out infinite;
+}
+
+.slot-stopping {
+  animation: slot-stop 0.3s ease-out;
+}
+
+/* Slot machine light sequence */
+@keyframes lights-sequence {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.light-sequence-1 {
+  animation: lights-sequence 0.5s ease-in-out infinite;
+}
+
+.light-sequence-2 {
+  animation: lights-sequence 0.5s ease-in-out infinite;
+  animation-delay: 0.15s;
+}
+
+.light-sequence-3 {
+  animation: lights-sequence 0.5s ease-in-out infinite;
+  animation-delay: 0.3s;
+}
+
 /* Markdown prose styling */
 .prose {
   color: hsl(var(--foreground));

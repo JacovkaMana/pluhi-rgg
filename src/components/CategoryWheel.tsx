@@ -29,33 +29,47 @@ export const CategoryWheel = ({ categories, isSpinning, onSpinComplete, onCatego
 
   useEffect(() => {
     if (isSpinning && categories.length > 0) {
+      // Pre-select the final result first
+      const finalIndex = Math.floor(Math.random() * categories.length);
+      
+      // Calculate total steps to reach the target with multiple rotations
+      const fullRotations = 10;
+      const totalSteps = (fullRotations * categories.length) + finalIndex;
+      
       spinStartTime.current = Date.now();
       let speed = 40;
-      
-      // Generate a random starting index
-      const randomStartIndex = Math.floor(Math.random() * categories.length);
-      console.log(randomStartIndex);
-      let currentIndex = randomStartIndex;
       
       const maxSpeed = 800;
       const spinDuration = 10000; // 10 seconds total
       const slowDownStart = 3000; // Start slowing after 3 seconds
       const finalSlowDown = 3000; // Final dramatic slowdown
 
-      // Track the actual final index that was highlighted
-      let actualFinalIndex = 0;
+      let currentStep = 0;
+      let currentIndex = Math.floor(Math.random() * categories.length);
 
       const spin = () => {
         const elapsed = Date.now() - spinStartTime.current;
         
         // Update highlighted index
         setHighlightedIndex(currentIndex);
-        actualFinalIndex = currentIndex; // Track the actual final index
 
         currentIndex = (currentIndex + 1) % categories.length;
+        currentStep++;
 
-        // Gradually slow down after 2 seconds
-        if (elapsed > slowDownStart) {
+        // Check if we've completed enough steps to reach the target
+        if (currentStep >= totalSteps) {
+          // Ensure we're at the final position
+          setHighlightedIndex(finalIndex);
+          onSpinComplete(categories[finalIndex]);
+          return;
+        }
+
+        // Gradually slow down - slot machine style
+        const remainingSteps = totalSteps - currentStep;
+        if (remainingSteps < 50) {
+          // Slow down dramatically in the last 50 steps
+          speed = Math.min(speed + 30, maxSpeed);
+        } else if (elapsed > slowDownStart) {
           const slowDownProgress = Math.min((elapsed - slowDownStart) / (spinDuration - slowDownStart), 1);
           
           // More aggressive slowdown in the final second
@@ -67,13 +81,13 @@ export const CategoryWheel = ({ categories, isSpinning, onSpinComplete, onCatego
           }
         }
 
-        // Stop after spin duration
+        // Also stop after max duration
         if (elapsed < spinDuration) {
           intervalRef.current = setTimeout(spin, speed);
         } else {
-          // Select the actual final index that was highlighted
-          setHighlightedIndex(actualFinalIndex);
-          onSpinComplete(categories[actualFinalIndex]);
+          // Time's up - force stop at final position
+          setHighlightedIndex(finalIndex);
+          onSpinComplete(categories[finalIndex]);
         }
       };
 

@@ -9,6 +9,8 @@ CREATE TABLE game_categories (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     icon TEXT NOT NULL,
+    weight INTEGER NOT NULL DEFAULT 1, -- Drop chance weight (higher = more likely)
+    color TEXT NOT NULL DEFAULT '#888888', -- Category color for the wheel
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

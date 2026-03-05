@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase, GameCategory, Game } from "@/lib/supabase";
+import { getCategoryColor } from "@/lib/wheelUtils";
 
 // Helper function to check if icon is a URL
 export const isIconUrl = (icon: string): boolean => {
@@ -9,6 +10,8 @@ export const isIconUrl = (icon: string): boolean => {
 // Extended GameCategory with games array (computed from separate games table)
 export interface GameCategoryWithGames extends GameCategory {
   games: string[];
+  weight: number;
+  color: string;
 }
 
 export const useGameLists = () => {
@@ -49,7 +52,11 @@ export const useGameLists = () => {
       ...category,
       games: games
         .filter((game) => game.category_id === category.id)
-        .map((game) => game.name)
+        .map((game) => game.name),
+      // Use weight from database or default to 1
+      weight: (category as any).weight || 1,
+      // Use color from database or get from wheelUtils
+      color: (category as any).color || getCategoryColor(category.id),
     }));
   }, [categories, games]);
 

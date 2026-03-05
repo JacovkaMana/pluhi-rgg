@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
 export interface CustomWheelOption {
@@ -23,32 +23,64 @@ interface CustomWheelProps {
 export const CustomWheel = ({ wheel, isSpinning, onSpinComplete }: CustomWheelProps) => {
   const [displayedOptions, setDisplayedOptions] = useState<CustomWheelOption[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Track the current shuffled options - persists after spin completes
+  const [currentOptionsList, setCurrentOptionsList] = useState<CustomWheelOption[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const spinStartTime = useRef<number>(0);
+  const wasSpinningRef = useRef(false);
 
+  // Fisher-Yates shuffle function
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const result = [...array];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  };
+
+  // Initialize with options in original order when wheel opens (wheel prop changes)
   useEffect(() => {
-    if (wheel.options.length > 0) {
+    if (wheel.options && wheel.options.length > 0) {
+      setCurrentOptionsList(wheel.options);
       setDisplayedOptions([
-        wheel.options[wheel.options.length - 2] || wheel.options[0],
-        wheel.options[wheel.options.length - 1] || wheel.options[0],
+        wheel.options[(wheel.options.length - 2) % wheel.options.length],
+        wheel.options[(wheel.options.length - 1) % wheel.options.length],
         wheel.options[0],
-        wheel.options[1] || wheel.options[0],
-        wheel.options[2] || wheel.options[0],
+        wheel.options[1 % wheel.options.length],
+        wheel.options[2 % wheel.options.length],
       ]);
       setCurrentIndex(0);
     }
   }, [wheel]);
 
+  // Handle spinning - shuffle options when spin STARTS
   useEffect(() => {
-    if (isSpinning && wheel.options.length > 0) {
+    // Detect when spin just started
+    if (isSpinning && !wasSpinningRef.current) {
+      if (!wheel.options || wheel.options.length === 0) return;
+      
+      // SHUFFLE the options when spin starts
+      const shuffled = shuffleArray(wheel.options);
+      setCurrentOptionsList(shuffled);
+      
+      // Pre-select the final result first
+      const finalIndex = Math.floor(Math.random() * shuffled.length);
+      
+      // Calculate total steps to reach the target with multiple rotations
+      const fullRotations = 10;
+      const totalSteps = (fullRotations * shuffled.length) + finalIndex;
+      
       spinStartTime.current = Date.now();
       let speed = 40;
-      let currentIndex = Math.floor(Math.random() * wheel.options.length);
+      
       const maxSpeed = 800;
       const spinDuration = 10000;
       const slowDownStart = 3000;
       const finalSlowDown = 3000;
-      let actualFinalIndex = 0;
+
+      let currentStep = 0;
+      let currentIndex = 0;
 
       const spin = () => {
         const elapsed = Date.now() - spinStartTime.current;
@@ -56,18 +88,36 @@ export const CustomWheel = ({ wheel, isSpinning, onSpinComplete }: CustomWheelPr
         // Update display
         setCurrentIndex(currentIndex);
         setDisplayedOptions([
-          wheel.options[(currentIndex - 2 + wheel.options.length) % wheel.options.length],
-          wheel.options[(currentIndex - 1 + wheel.options.length) % wheel.options.length],
-          wheel.options[currentIndex],
-          wheel.options[(currentIndex + 1) % wheel.options.length],
-          wheel.options[(currentIndex + 2) % wheel.options.length],
+          shuffled[(currentIndex - 2 + shuffled.length) % shuffled.length],
+          shuffled[(currentIndex - 1 + shuffled.length) % shuffled.length],
+          shuffled[currentIndex],
+          shuffled[(currentIndex + 1) % shuffled.length],
+          shuffled[(currentIndex + 2) % shuffled.length],
         ]);
-        actualFinalIndex = currentIndex;
 
-        currentIndex = (currentIndex + 1) % wheel.options.length;
+        currentIndex = (currentIndex + 1) % shuffled.length;
+        currentStep++;
 
-        // Gradually slow down after 2 seconds
-        if (elapsed > slowDownStart) {
+        // Check if we've completed enough steps to reach the target
+        if (currentStep >= totalSteps) {
+          // Ensure we're at the final position
+          setCurrentIndex(finalIndex);
+          setDisplayedOptions([
+            shuffled[(finalIndex - 2 + shuffled.length) % shuffled.length],
+            shuffled[(finalIndex - 1 + shuffled.length) % shuffled.length],
+            shuffled[finalIndex],
+            shuffled[(finalIndex + 1) % shuffled.length],
+            shuffled[(finalIndex + 2) % shuffled.length],
+          ]);
+          onSpinComplete(shuffled[finalIndex]);
+          return;
+        }
+
+        // Gradually slow down - slot machine style
+        const remainingSteps = totalSteps - currentStep;
+        if (remainingSteps < 50) {
+          speed = Math.min(speed + 30, maxSpeed);
+        } else if (elapsed > slowDownStart) {
           const slowDownProgress = Math.min((elapsed - slowDownStart) / (spinDuration - slowDownStart), 1);
           
           if (elapsed > spinDuration - finalSlowDown) {
@@ -78,23 +128,28 @@ export const CustomWheel = ({ wheel, isSpinning, onSpinComplete }: CustomWheelPr
           }
         }
 
+        // Also stop after max duration
         if (elapsed < spinDuration) {
           intervalRef.current = setTimeout(spin, speed);
         } else {
-          setCurrentIndex(actualFinalIndex);
+          // Time's up - force stop at final position
+          setCurrentIndex(finalIndex);
           setDisplayedOptions([
-            wheel.options[(actualFinalIndex - 2 + wheel.options.length) % wheel.options.length],
-            wheel.options[(actualFinalIndex - 1 + wheel.options.length) % wheel.options.length],
-            wheel.options[actualFinalIndex],
-            wheel.options[(actualFinalIndex + 1) % wheel.options.length],
-            wheel.options[(actualFinalIndex + 2) % wheel.options.length],
+            shuffled[(finalIndex - 2 + shuffled.length) % shuffled.length],
+            shuffled[(finalIndex - 1 + shuffled.length) % shuffled.length],
+            shuffled[finalIndex],
+            shuffled[(finalIndex + 1) % shuffled.length],
+            shuffled[(finalIndex + 2) % shuffled.length],
           ]);
-          onSpinComplete(wheel.options[actualFinalIndex]);
+          onSpinComplete(shuffled[finalIndex]);
         }
       };
 
       spin();
     }
+    
+    // Update the ref
+    wasSpinningRef.current = isSpinning;
 
     return () => {
       if (intervalRef.current) {

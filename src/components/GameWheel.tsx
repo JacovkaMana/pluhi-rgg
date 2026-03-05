@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface GameWheelProps {
   games: string[];
@@ -9,32 +9,64 @@ interface GameWheelProps {
 export const GameWheel = ({ games, isSpinning, onSpinComplete }: GameWheelProps) => {
   const [displayedGames, setDisplayedGames] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Track the current shuffled games - persists after spin completes
+  const [currentGamesList, setCurrentGamesList] = useState<string[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const spinStartTime = useRef<number>(0);
+  const wasSpinningRef = useRef(false);
 
+  // Fisher-Yates shuffle function
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const result = [...array];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+  };
+
+  // Initialize with games in original order when wheel opens (games prop changes)
   useEffect(() => {
-    if (games.length > 0) {
+    if (games && games.length > 0) {
+      setCurrentGamesList(games);
       setDisplayedGames([
-        games[games.length - 2] || games[0],
-        games[games.length - 1] || games[0],
+        games[(games.length - 2) % games.length],
+        games[(games.length - 1) % games.length],
         games[0],
-        games[1] || games[0],
-        games[2] || games[0],
+        games[1 % games.length],
+        games[2 % games.length],
       ]);
       setCurrentIndex(0);
     }
   }, [games]);
 
+  // Handle spinning - shuffle games when spin STARTS
   useEffect(() => {
-    if (isSpinning && games.length > 0) {
+    // Detect when spin just started
+    if (isSpinning && !wasSpinningRef.current) {
+      if (!games || games.length === 0) return;
+      
+      // SHUFFLE the games when spin starts
+      const shuffled = shuffleArray(games);
+      setCurrentGamesList(shuffled);
+      
+      // Pre-select the final result first
+      const finalIndex = Math.floor(Math.random() * shuffled.length);
+      
+      // Calculate total steps to reach the target with multiple rotations
+      const fullRotations = 10;
+      const totalSteps = (fullRotations * shuffled.length) + finalIndex;
+      
       spinStartTime.current = Date.now();
       let speed = 40;
-      let currentIndex = Math.floor(Math.random() * games.length);
+      
       const maxSpeed = 800;
       const spinDuration = 10000;
       const slowDownStart = 3000;
       const finalSlowDown = 3000;
-      let actualFinalIndex = 0;
+
+      let currentStep = 0;
+      let currentIndex = 0;
 
       const spin = () => {
         const elapsed = Date.now() - spinStartTime.current;
@@ -42,18 +74,36 @@ export const GameWheel = ({ games, isSpinning, onSpinComplete }: GameWheelProps)
         // Update display
         setCurrentIndex(currentIndex);
         setDisplayedGames([
-          games[(currentIndex - 2 + games.length) % games.length],
-          games[(currentIndex - 1 + games.length) % games.length],
-          games[currentIndex],
-          games[(currentIndex + 1) % games.length],
-          games[(currentIndex + 2) % games.length],
+          shuffled[(currentIndex - 2 + shuffled.length) % shuffled.length],
+          shuffled[(currentIndex - 1 + shuffled.length) % shuffled.length],
+          shuffled[currentIndex],
+          shuffled[(currentIndex + 1) % shuffled.length],
+          shuffled[(currentIndex + 2) % shuffled.length],
         ]);
-        actualFinalIndex = currentIndex;
 
-        currentIndex = (currentIndex + 1) % games.length;
+        currentIndex = (currentIndex + 1) % shuffled.length;
+        currentStep++;
 
-        // Gradually slow down after 2 seconds
-        if (elapsed > slowDownStart) {
+        // Check if we've completed enough steps to reach the target
+        if (currentStep >= totalSteps) {
+          // Ensure we're at the final position
+          setCurrentIndex(finalIndex);
+          setDisplayedGames([
+            shuffled[(finalIndex - 2 + shuffled.length) % shuffled.length],
+            shuffled[(finalIndex - 1 + shuffled.length) % shuffled.length],
+            shuffled[finalIndex],
+            shuffled[(finalIndex + 1) % shuffled.length],
+            shuffled[(finalIndex + 2) % shuffled.length],
+          ]);
+          onSpinComplete(shuffled[finalIndex]);
+          return;
+        }
+
+        // Gradually slow down - slot machine style
+        const remainingSteps = totalSteps - currentStep;
+        if (remainingSteps < 50) {
+          speed = Math.min(speed + 30, maxSpeed);
+        } else if (elapsed > slowDownStart) {
           const slowDownProgress = Math.min((elapsed - slowDownStart) / (spinDuration - slowDownStart), 1);
           
           if (elapsed > spinDuration - finalSlowDown) {
@@ -64,23 +114,28 @@ export const GameWheel = ({ games, isSpinning, onSpinComplete }: GameWheelProps)
           }
         }
 
+        // Also stop after max duration
         if (elapsed < spinDuration) {
           intervalRef.current = setTimeout(spin, speed);
         } else {
-          setCurrentIndex(actualFinalIndex);
+          // Time's up - force stop at final position
+          setCurrentIndex(finalIndex);
           setDisplayedGames([
-            games[(actualFinalIndex - 2 + games.length) % games.length],
-            games[(actualFinalIndex - 1 + games.length) % games.length],
-            games[actualFinalIndex],
-            games[(actualFinalIndex + 1) % games.length],
-            games[(actualFinalIndex + 2) % games.length],
+            shuffled[(finalIndex - 2 + shuffled.length) % shuffled.length],
+            shuffled[(finalIndex - 1 + shuffled.length) % shuffled.length],
+            shuffled[finalIndex],
+            shuffled[(finalIndex + 1) % shuffled.length],
+            shuffled[(finalIndex + 2) % shuffled.length],
           ]);
-          onSpinComplete(games[actualFinalIndex]);
+          onSpinComplete(shuffled[finalIndex]);
         }
       };
 
       spin();
     }
+    
+    // Update the ref
+    wasSpinningRef.current = isSpinning;
 
     return () => {
       if (intervalRef.current) {

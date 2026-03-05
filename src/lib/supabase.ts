@@ -26,6 +26,8 @@ export interface GameCategory {
   id: string;
   name: string;
   icon: string;
+  weight: number; // Drop chance weight (higher = more likely)
+  color: string; // Category color for the wheel
   created_at?: string;
   updated_at?: string;
 }

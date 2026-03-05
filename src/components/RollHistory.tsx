@@ -53,7 +53,7 @@ export const RollHistory = ({ className }: RollHistoryProps) => {
       categoryIcon,
       game,
     };
-    setHistory((prev) => [newEntry, ...prev].slice(0, 50)); // Keep last 50 entries
+    setHistory((prev) => [newEntry, ...prev].slice(0, 50));
   };
 
   const clearHistory = () => {
