@@ -21,78 +21,121 @@ interface CategoryWheelProps {
   selectedCategoryId?: string | null;
 }
 
+// Constant number of spins for consistent animation
+const TOTAL_SPINS = 500;
+
 export const CategoryWheel = ({ categories, isSpinning, onSpinComplete, onCategoryClick, onCategoryDisable, disabledCategories, selectedCategoryId }: CategoryWheelProps) => {
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  // Track if spin just completed to preserve final result
+  const [justCompletedSpin, setJustCompletedSpin] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const spinStartTime = useRef<number>(0);
-  const finalIndexRef = useRef<number>(0);
+  const wasSpinningRef = useRef(false);
+  // Track if spin just completed to prevent re-triggering
+  const spinCompleteRef = useRef(false);
+  // Store the current spin's categories in a ref to ensure consistency
+  const spinCategoriesRef = useRef<Category[]>([]);
+  // Store the final category index for the current spin
+  const spinFinalIndexRef = useRef<number>(0);
 
+  // Handle spinning
   useEffect(() => {
-    if (isSpinning && categories.length > 0) {
+    // Detect when spin just started
+    if (isSpinning && !wasSpinningRef.current) {
+      spinCompleteRef.current = false;
+      
+      if (!categories || categories.length === 0) return;
+      
+      // Store categories in ref to ensure consistency throughout the spin
+      spinCategoriesRef.current = categories;
+      
       // Pre-select the final result first
       const finalIndex = Math.floor(Math.random() * categories.length);
+      spinFinalIndexRef.current = finalIndex;
       
-      // Calculate total steps to reach the target with multiple rotations
-      const fullRotations = 10;
-      const totalSteps = (fullRotations * categories.length) + finalIndex;
+      // Calculate starting position: start from a position that will land on finalIndex
+      // after exactly TOTAL_SPINS steps
+      const total = categories.length;
+      const totalSteps = TOTAL_SPINS;
+      
+      // Starting index (will increment each step and land on finalIndex after totalSteps)
+      const startIndex = ((finalIndex - totalSteps) % total + total) % total;
       
       spinStartTime.current = Date.now();
-      let speed = 40;
+      let speed = 10; // Start fast
       
-      const maxSpeed = 800;
-      const spinDuration = 10000; // 10 seconds total
-      const slowDownStart = 3000; // Start slowing after 3 seconds
-      const finalSlowDown = 3000; // Final dramatic slowdown
-
+      // Total spin duration: 20 seconds (enough for slow-down effect)
+      const spinDuration = 20000;
+      
       let currentStep = 0;
-      let currentIndex = Math.floor(Math.random() * categories.length);
+      let currentIndex = startIndex;
 
       const spin = () => {
-        const elapsed = Date.now() - spinStartTime.current;
+        // Use refs for consistency
+        const currentCategories = spinCategoriesRef.current;
+        const finalIdx = spinFinalIndexRef.current;
+        const total = currentCategories.length;
+        
+        // Check if we've completed all steps
+        if (currentStep >= totalSteps) {
+          // Ensure we're at the final position - THIS IS THE WINNING CATEGORY
+          setHighlightedIndex(finalIdx);
+          
+          // Only call onSpinComplete once - defer it to let the display settle first
+          if (!spinCompleteRef.current) {
+            spinCompleteRef.current = true;
+            setJustCompletedSpin(true);
+            // Use setTimeout to defer the callback so the visual display has time to settle
+            // before the parent state updates cause a re-render
+            setTimeout(() => {
+              onSpinComplete(currentCategories[finalIdx]);
+            }, 100);
+          }
+          return;
+        }
         
         // Update highlighted index
         setHighlightedIndex(currentIndex);
 
-        currentIndex = (currentIndex + 1) % categories.length;
+        // Move to next position
+        currentIndex = (currentIndex + 1) % total;
         currentStep++;
 
-        // Check if we've completed enough steps to reach the target
-        if (currentStep >= totalSteps) {
-          // Ensure we're at the final position
-          setHighlightedIndex(finalIndex);
-          onSpinComplete(categories[finalIndex]);
-          return;
-        }
-
-        // Gradually slow down - slot machine style
-        const remainingSteps = totalSteps - currentStep;
-        if (remainingSteps < 50) {
-          // Slow down dramatically in the last 50 steps
-          speed = Math.min(speed + 30, maxSpeed);
-        } else if (elapsed > slowDownStart) {
-          const slowDownProgress = Math.min((elapsed - slowDownStart) / (spinDuration - slowDownStart), 1);
-          
-          // More aggressive slowdown in the final second
-          if (elapsed > spinDuration - finalSlowDown) {
-            const finalSlowProgress = 1 - ((spinDuration - elapsed) / finalSlowDown);
-            speed = Math.min(speed + 30 + (finalSlowProgress * 200), maxSpeed);
+        // Gradually slow down - from very fast to very slow
+        const progress = currentStep / totalSteps;
+        
+          if (progress < 0.5) {
+            // Very fast spinning phase (0-50%): minimum delay
+            speed = 1;
+          } else if (progress < 0.7) {
+            // Fast spinning (50-70%): start slowing down
+            speed = 5 + ((progress - 0.5) / 0.2) * 10;
+          } else if (progress < 0.85) {
+            // Slowing down (70-85%): noticeably slower
+            speed = 10 + ((progress - 0.7) / 0.15) * 10;
+          } else if (progress < 0.92) {
+            // Slow phase (85-92%): much slower
+            speed = 50 + ((progress - 0.85) / 0.07) * 50;
+          } else if (progress < 0.96) {
+            // Final approach (92-96%): very slow
+            speed = 100 + ((progress - 0.92) / 0.04) * 100;
+          } else if (progress < 0.98) {
+            // Turtle slow (96-98%): extremely slow
+            speed = 200 + ((progress - 0.96) / 0.02) * 150;
           } else {
-            speed = Math.min(speed + 15 + (slowDownProgress * 50), maxSpeed);
+            // Crawling (98-100%): very slow, each step clearly visible
+            speed = 1200 + ((progress - 0.998) / 0.02) * 900;
           }
-        }
 
-        // Also stop after max duration
-        if (elapsed < spinDuration) {
-          intervalRef.current = setTimeout(spin, speed);
-        } else {
-          // Time's up - force stop at final position
-          setHighlightedIndex(finalIndex);
-          onSpinComplete(categories[finalIndex]);
-        }
+        // Continue spinning - no time-based stop, let it complete all steps
+        intervalRef.current = setTimeout(spin, speed);
       };
 
       spin();
     }
+    
+    // Update the ref
+    wasSpinningRef.current = isSpinning;
 
     return () => {
       if (intervalRef.current) {
@@ -110,7 +153,7 @@ export const CategoryWheel = ({ categories, isSpinning, onSpinComplete, onCatego
     return cn(
       "relative flex flex-col items-center p-4 rounded-xl transition-all duration-200",
       "border bg-card min-w-[120px] h-[160px]",
-      isHighlighted && "border-primary bg-primary/10 shadow-lg shadow-primary/20",
+      isHighlighted && "border-primary bg-primary/10 shadow-lg shadow-primary/20 scale-105",
       isSelected && !isHighlighted && "border-green-500/50 bg-green-500/10 shadow-lg shadow-green-500/10",
       !isHighlighted && !isSelected && "border-border/60",
       isDisabled && "opacity-40 cursor-not-allowed",

@@ -215,25 +215,25 @@ export const CombinedWheel = ({
           
           if (progress < 0.5) {
             // Very fast spinning phase (0-50%): minimum delay
-            speed = 10;
+            speed = 1;
           } else if (progress < 0.7) {
             // Fast spinning (50-70%): start slowing down
-            speed = 10 + ((progress - 0.5) / 0.2) * 10;
+            speed = 5 + ((progress - 0.5) / 0.2) * 10;
           } else if (progress < 0.85) {
             // Slowing down (70-85%): noticeably slower
             speed = 10 + ((progress - 0.7) / 0.15) * 10;
           } else if (progress < 0.92) {
             // Slow phase (85-92%): much slower
-            speed = 100 + ((progress - 0.85) / 0.07) * 50;
+            speed = 50 + ((progress - 0.85) / 0.07) * 50;
           } else if (progress < 0.96) {
             // Final approach (92-96%): very slow
-            speed = 150 + ((progress - 0.92) / 0.04) * 100;
+            speed = 100 + ((progress - 0.92) / 0.04) * 100;
           } else if (progress < 0.98) {
             // Turtle slow (96-98%): extremely slow
             speed = 200 + ((progress - 0.96) / 0.02) * 150;
           } else {
             // Crawling (98-100%): very slow, each step clearly visible
-            speed = 1200 + ((progress - 0.99) / 0.02) * 900;
+            speed = 1200 + ((progress - 0.998) / 0.02) * 900;
           }
 
           // Continue spinning - no time-based stop, let it complete all steps
@@ -263,77 +263,48 @@ export const CombinedWheel = ({
   }
 
   return (
-    <div className="relative">
-      {/* Slot machine frame */}
-      <div className="relative bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl p-1 shadow-2xl">
-        {/* Inner frame with metallic look */}
-        <div className="relative bg-gradient-to-b from-slate-700 to-slate-800 rounded-xl p-6 border-4 border-slate-600">
-          {/* Window frame - like a slot machine */}
-          <div className="relative bg-slate-900 rounded-lg overflow-hidden border-2 border-slate-500 shadow-inner">
-            {/* Glossy overlay effect */}
-            <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none z-20" />
-            
-            {/* Top indicator lights */}
-            <div className="absolute top-0 left-0 right-0 h-2 flex justify-between px-2 z-30">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" style={{ animationDelay: '0.2s' }} />
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" style={{ animationDelay: '0.4s' }} />
+    <div className="relative h-72">
+      {/* Gradient overlays */}
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none" />
+      
+      {/* Games display */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+        {displayedGames.map((gameWithCategory, index) => (
+          <div
+            key={`${gameWithCategory.game}-${index}`}
+            className={cn(
+              "text-center px-4 py-1.5 rounded-md whitespace-nowrap transition-all duration-200",
+              index === 2
+                ? "bg-primary/20 border-2 border-primary text-foreground font-bold text-xl min-w-[200px] shadow-lg"
+                : "text-muted-foreground/40 text-sm"
+            )}
+            style={{
+              borderColor: index === 2 ? gameWithCategory.categoryColor : 'transparent',
+              boxShadow: index === 2
+                ? `0 0 20px ${gameWithCategory.categoryColor}40`
+                : 'none',
+            }}
+          >
+            <div className="flex items-center justify-center gap-2">
+              {index === 2 && (
+                <span className="text-lg">{gameWithCategory.categoryIcon}</span>
+              )}
+              <span>{gameWithCategory.game}</span>
+              {index === 2 && (
+                <span className="text-lg">{gameWithCategory.categoryIcon}</span>
+              )}
             </div>
-
-            {/* Gradient overlays for depth */}
-            <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-slate-900 to-transparent z-10 pointer-events-none" />
-            <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-slate-900 to-transparent z-10 pointer-events-none" />
-            
-            {/* Center highlight line */}
-            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent z-10 pointer-events-none" />
-            
-            {/* Games display */}
-            <div className="flex flex-col items-center justify-center gap-1 py-8">
-              {displayedGames.map((gameWithCategory, index) => (
-                <div
-                  key={`${gameWithCategory.game}-${index}`}
-                  className={cn(
-                    "w-full max-w-md text-center px-4 py-2 rounded-md transition-all duration-150",
-                    index === 2
-                      ? "bg-slate-800/90 border-2 shadow-lg transform scale-110 z-10"
-                      : "bg-transparent text-slate-500 scale-90"
-                  )}
-                  style={{
-                    borderColor: index === 2 ? gameWithCategory.categoryColor : 'transparent',
-                    boxShadow: index === 2 
-                      ? `0 0 20px ${gameWithCategory.categoryColor}40, inset 0 0 20px ${gameWithCategory.categoryColor}20`
-                      : 'none',
-                  }}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    {index === 2 && (
-                      <span className="text-lg">{gameWithCategory.categoryIcon}</span>
-                    )}
-                    <span
-                      className={cn(
-                        "font-semibold whitespace-nowrap",
-                        index === 2 ? "text-white text-lg" : "text-slate-500 text-sm"
-                      )}
-                    >
-                      {gameWithCategory.game}
-                    </span>
-                    {index === 2 && (
-                      <span className="text-lg">{gameWithCategory.categoryIcon}</span>
-                    )}
-                  </div>
-                  {index === 2 && (
-                    <div 
-                      className="text-xs mt-1 opacity-80"
-                      style={{ color: gameWithCategory.categoryColor }}
-                    >
-                      {gameWithCategory.categoryName}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            {index === 2 && (
+              <div
+                className="text-xs mt-1 opacity-80"
+                style={{ color: gameWithCategory.categoryColor }}
+              >
+                {gameWithCategory.categoryName}
+              </div>
+            )}
           </div>
-        </div>
+        ))}
       </div>
     </div>
   );

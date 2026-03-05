@@ -24,7 +24,7 @@ const Index = () => {
   const { addCategoryEntry, addGameEntry } = useRollHistory();
   
   // Mode state
-  const [mode, setMode] = useState<RouletteMode>("games");
+  const [mode, setMode] = useState<RouletteMode>("combined");
   
   // Category state
   const [selectedCategory, setSelectedCategory] = useState<GameCategoryWithGames | null>(null);
@@ -146,20 +146,6 @@ const Index = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setMode("games")}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200",
-                  mode === "games"
-                    ? "bg-blue-500/30 text-blue-200"
-                    : "text-blue-300/60 hover:text-blue-300 hover:bg-blue-500/20"
-                )}
-              >
-                <ToggleLeft className="w-4 h-4" />
-                <span className="text-xs">Step</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
                 onClick={() => setMode("combined")}
                 className={cn(
                   "flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200",
@@ -184,6 +170,20 @@ const Index = () => {
               >
                 <Zap className="w-4 h-4" />
                 <span className="text-xs">Custom</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMode("games")}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200",
+                  mode === "games"
+                    ? "bg-blue-500/30 text-blue-200"
+                    : "text-blue-300/60 hover:text-blue-300 hover:bg-blue-500/20"
+                )}
+              >
+                <ToggleLeft className="w-4 h-4" />
+                <span className="text-xs">Step</span>
               </Button>
             </div>
           </div>

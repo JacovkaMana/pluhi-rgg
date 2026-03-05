@@ -4,13 +4,13 @@ import { GameCategoryWithGames } from "@/hooks/useGameLists";
 export const CATEGORY_COLORS: Record<string, string> = {
   cozy: "#8B5CF6",      // Purple
   rpg: "#EF4444",       // Red
-  dzhokerge: "#F59E0B", // Amber
-  dumat: "#3B82F6",     // Blue
-  duhota: "#EC4899",    // Pink
-  indi: "#10B981",      // Emerald
-  koop: "#06B6D4",      // Cyan
-  strelyalka: "#EF4444", // Red (shooter)
-  ekshn: "#F97316",     // Orange
+  jokerge: "#F59E0B", // Amber
+  puzzle: "#3B82F6",     // Blue
+  reading: "#EC4899",    // Pink
+  roguelike: "#10B981",      // Emerald
+  coop: "#06B6D4",      // Cyan
+  shooter: "#EF4444", // Red (shooter)
+  action: "#F97316",     // Orange
 };
 
 // Default color for unknown categories
