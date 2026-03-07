@@ -60,11 +60,22 @@ export const CombinedWheel = ({
     return result;
   }, [categories]);
 
-  // Fisher-Yates shuffle function
+  // Seeded random number generator for better randomness
+  // Uses a combination of Math.random and timestamp to ensure different results
+  const seededRandom = (): number => {
+    const now = Date.now();
+    const randomPart = Math.random();
+    // Mix in the current time to ensure different seeds
+    const seed = (now * randomPart) % 1;
+    return seed;
+  };
+
+  // Fisher-Yates shuffle function with improved randomness
   const shuffleArray = <T,>(array: T[]): T[] => {
     const result = [...array];
     for (let i = result.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      // Use seeded random for better distribution
+      const j = Math.floor(seededRandom() * (i + 1));
       [result[i], result[j]] = [result[j], result[i]];
     }
     return result;

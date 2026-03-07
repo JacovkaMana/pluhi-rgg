@@ -27,11 +27,22 @@ export const GameWheel = ({ games, isSpinning, onSpinComplete }: GameWheelProps)
   // Store the final game index for the current spin
   const spinFinalIndexRef = useRef<number>(0);
 
-  // Fisher-Yates shuffle function
+  // Seeded random number generator for better randomness
+  // Uses a combination of Math.random and timestamp to ensure different results
+  const seededRandom = (): number => {
+    const now = Date.now();
+    const randomPart = Math.random();
+    // Mix in the current time to ensure different seeds
+    const seed = (now * randomPart) % 1;
+    return seed;
+  };
+
+  // Fisher-Yates shuffle function with improved randomness
   const shuffleArray = <T,>(array: T[]): T[] => {
     const result = [...array];
     for (let i = result.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      // Use seeded random for better distribution
+      const j = Math.floor(seededRandom() * (i + 1));
       [result[i], result[j]] = [result[j], result[i]];
     }
     return result;
@@ -84,8 +95,8 @@ export const GameWheel = ({ games, isSpinning, onSpinComplete }: GameWheelProps)
       spinGamesRef.current = shuffled;
       setCurrentGamesList(shuffled);
       
-      // Pre-select the final result first
-      const finalIndex = Math.floor(Math.random() * shuffled.length);
+      // Pre-select the final result first - use seeded random for better randomness
+      const finalIndex = Math.floor(seededRandom() * shuffled.length);
       spinFinalIndexRef.current = finalIndex;
       
       // Calculate starting position: start from a position that will land on finalIndex

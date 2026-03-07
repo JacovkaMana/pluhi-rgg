@@ -283,10 +283,10 @@ async function migrate() {
     console.log('✅ Connected to Supabase');
     
     // Run migrations
-    await migrateGameCategories();
+    // await migrateGameCategories();
     await migrateGames();
-    await migratePlayers();
-    await migrateCustomWheels();
+    // await migratePlayers();
+    // await migrateCustomWheels();
     
     console.log('\n🎉 Migration completed successfully!');
     

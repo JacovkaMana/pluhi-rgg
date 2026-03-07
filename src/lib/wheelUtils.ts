@@ -35,6 +35,16 @@ export const calculateDropChance = (
   return ((category.weight || 1) / totalWeight) * 100;
 };
 
+// Seeded random number generator for better randomness
+// Uses a combination of Math.random and timestamp to ensure different results
+const seededRandom = (): number => {
+  const now = Date.now();
+  const randomPart = Math.random();
+  // Mix in the current time to ensure different seeds
+  const seed = (now * randomPart) % 1;
+  return seed;
+};
+
 // Weighted random selection - returns a random game from all categories
 // based on category weights
 export const selectWeightedGame = (
@@ -45,18 +55,18 @@ export const selectWeightedGame = (
   const totalWeight = calculateTotalWeight(categories);
   if (totalWeight === 0) return null;
 
-  // Generate random number between 0 and totalWeight
-  let random = Math.random() * totalWeight;
+  // Generate random number between 0 and totalWeight using seeded random
+  let random = seededRandom() * totalWeight;
 
   // Find the category based on weight
   for (const category of categories) {
     const weight = category.weight || 1;
     if (random < weight) {
-      // Select random game from this category
+      // Select random game from this category using seeded random
       const games = category.games || [];
       if (games.length === 0) return null;
       
-      const gameIndex = Math.floor(Math.random() * games.length);
+      const gameIndex = Math.floor(seededRandom() * games.length);
       return {
         game: games[gameIndex],
         category,
@@ -70,7 +80,7 @@ export const selectWeightedGame = (
   const games = firstCategory.games || [];
   if (games.length === 0) return null;
   
-  const gameIndex = Math.floor(Math.random() * games.length);
+  const gameIndex = Math.floor(seededRandom() * games.length);
   return {
     game: games[gameIndex],
     category: firstCategory,

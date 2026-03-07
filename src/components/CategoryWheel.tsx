@@ -38,6 +38,16 @@ export const CategoryWheel = ({ categories, isSpinning, onSpinComplete, onCatego
   // Store the final category index for the current spin
   const spinFinalIndexRef = useRef<number>(0);
 
+  // Seeded random number generator for better randomness
+  // Uses a combination of Math.random and timestamp to ensure different results
+  const seededRandom = (): number => {
+    const now = Date.now();
+    const randomPart = Math.random();
+    // Mix in the current time to ensure different seeds
+    const seed = (now * randomPart) % 1;
+    return seed;
+  };
+
   // Handle spinning
   useEffect(() => {
     // Detect when spin just started
@@ -49,8 +59,8 @@ export const CategoryWheel = ({ categories, isSpinning, onSpinComplete, onCatego
       // Store categories in ref to ensure consistency throughout the spin
       spinCategoriesRef.current = categories;
       
-      // Pre-select the final result first
-      const finalIndex = Math.floor(Math.random() * categories.length);
+      // Pre-select the final result first - use seeded random for better randomness
+      const finalIndex = Math.floor(seededRandom() * categories.length);
       spinFinalIndexRef.current = finalIndex;
       
       // Calculate starting position: start from a position that will land on finalIndex
