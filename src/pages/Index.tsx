@@ -3,6 +3,7 @@ import { GameWheel } from "@/components/GameWheel";
 import { CategoryWheel } from "@/components/CategoryWheel";
 import { CustomWheel, CustomWheelOption } from "@/components/CustomWheel";
 import { CombinedWheel, WheelLegend } from "@/components/CombinedWheel";
+import { ItemsWheel } from "@/components/ItemsWheel";
 import { RollButtons } from "@/components/RollButtons";
 import { ResultDisplay } from "@/components/ResultDisplay";
 import { RollHistory, useRollHistory } from "@/components/RollHistory";
@@ -11,17 +12,20 @@ import { GameList } from "@/components/GameList";
 import { RulesModal } from "@/components/RulesModal";
 import { useGameLists, GameCategoryWithGames } from "@/hooks/useGameLists";
 import { useCustomWheels } from "@/hooks/useCustomWheels";
-import { Sparkles, ToggleLeft, ToggleRight, Layers, Zap } from "lucide-react";
+import { useItems } from "@/hooks/useItems";
+import { Sparkles, ToggleLeft, ToggleRight, Layers, Zap, Package } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Item } from "@/lib/sheets";
 
-type RouletteMode = "games" | "combined" | "custom";
+type RouletteMode = "games" | "combined" | "custom" | "items";
 
 const Index = () => {
   const { lists, loading: listsLoading } = useGameLists();
   const { wheels, loading: wheelsLoading } = useCustomWheels();
-  const { addCategoryEntry, addGameEntry } = useRollHistory();
+  const { items, loading: itemsLoading, getNormalItems } = useItems();
+  const { addCategoryEntry, addGameEntry, addItemsEntry } = useRollHistory();
   
   // Mode state
   const [mode, setMode] = useState<RouletteMode>("combined");
@@ -43,6 +47,10 @@ const Index = () => {
   const [selectedCustomWheel, setSelectedCustomWheel] = useState<string | null>(null);
   const [isCustomSpinning, setIsCustomSpinning] = useState(false);
   const [customResult, setCustomResult] = useState<CustomWheelOption | null>(null);
+
+  // Items wheel state
+  const [isItemsSpinning, setIsItemsSpinning] = useState(false);
+  const [itemsResult, setItemsResult] = useState<Item[] | null>(null);
 
   const handleRollCategory = () => {
     if (lists.length === 0 || isCategorySpinning || isGameSpinning) return;
@@ -124,6 +132,19 @@ const Index = () => {
 
   const selectedWheel = wheels.find(w => w.id === selectedCustomWheel);
 
+  const handleRollItems = () => {
+    const normalItems = getNormalItems();
+    if (normalItems.length === 0 || isItemsSpinning) return;
+    setIsItemsSpinning(true);
+    setItemsResult(null);
+  };
+
+  const handleItemsSpinComplete = useCallback((results: Item[]) => {
+    setIsItemsSpinning(false);
+    setItemsResult(results);
+    addItemsEntry(results.map(item => item.name));
+  }, [addItemsEntry]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -184,6 +205,20 @@ const Index = () => {
               >
                 <ToggleLeft className="w-4 h-4" />
                 <span className="text-xs">Step</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMode("items")}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200",
+                  mode === "items"
+                    ? "bg-amber-500/30 text-amber-200"
+                    : "text-amber-300/60 hover:text-amber-300 hover:bg-amber-500/20"
+                )}
+              >
+                <Package className="w-4 h-4" />
+                <span className="text-xs">Items</span>
               </Button>
             </div>
           </div>
@@ -310,6 +345,70 @@ const Index = () => {
                 />
               </section>
             </>
+          ) : mode === "items" ? (
+            <>
+              {/* Items Wheel - Three items rolled at once */}
+              <Card className="border border-border p-6">
+                <h2 className="text-lg font-semibold text-foreground mb-4 text-center flex items-center justify-center gap-2">
+                  <Package className="w-5 h-5 text-amber-400" />
+                  Items Wheel
+                </h2>
+                {itemsLoading ? (
+                  <div className="flex justify-center">
+                    <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : (
+                  <ItemsWheel
+                    items={getNormalItems()}
+                    isSpinning={isItemsSpinning}
+                    onSpinComplete={handleItemsSpinComplete}
+                  />
+                )}
+              </Card>
+
+              {/* Items Roll Button */}
+              <div className="flex justify-center">
+                <Button
+                  onClick={handleRollItems}
+                  disabled={getNormalItems().length === 0 || isItemsSpinning}
+                  size="lg"
+                  className={cn(
+                    "px-16 py-6 rounded-2xl font-bold text-2xl",
+                    "bg-amber-500/10 border-2 border-amber-500/30 text-amber-300",
+                    "transition-all duration-300 transform",
+                    "hover:bg-amber-500/20 hover:border-amber-500/50 hover:scale-105 active:scale-95",
+                    "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100",
+                    !isItemsSpinning && getNormalItems().length > 0 && "animate-pulse-glow",
+                    isItemsSpinning && "cursor-wait"
+                  )}
+                >
+                  {isItemsSpinning ? "Rolling..." : "Roll Items"}
+                </Button>
+              </div>
+
+              {/* Items Result Display */}
+              {itemsResult && itemsResult.length > 0 && (
+                <div className="grid grid-cols-3 gap-4">
+                  {itemsResult.map((item, index) => (
+                    <Card
+                      key={item.id}
+                      className="border border-amber-500/30 bg-amber-500/10 p-6 text-center"
+                    >
+                      <div className="flex items-center justify-center gap-2 text-amber-400 mb-2">
+                        <Package className="w-4 h-4" />
+                        <span className="text-sm font-medium">Cost: {item.cost}</span>
+                      </div>
+                      <h2 className="text-2xl font-bold text-foreground text-glow mb-2">
+                        {item.name}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {item.description || "No description"}
+                      </p>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
           ) : (
             <>
               {/* Custom Wheel Selector */}
@@ -420,7 +519,9 @@ const Index = () => {
             ? (combinedResult ? `${combinedResult.category.name} - ${combinedResult.game}` : "Roll the combined wheel!")
             : mode === "games"
               ? (selectedCategory?.name || "Roll a category to start")
-              : (selectedWheel?.name || "Select a custom wheel to start")
+              : mode === "items"
+                ? "Roll for random items"
+                : (selectedWheel?.name || "Select a custom wheel to start")
           }
         </div>
       </footer>

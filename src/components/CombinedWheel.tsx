@@ -338,7 +338,7 @@ export const WheelLegend = ({ categories }: WheelLegendProps) => {
         <span className="text-lg">🎯</span>
         Drop Chances
       </h3>
-      <div className="space-y-2 max-h-64 overflow-y-auto">
+      <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-hide">
         {sortedCategories.map((category) => {
           const chance = calculateDropChance(category, totalWeight);
           const color = getCategoryColor(category.id);

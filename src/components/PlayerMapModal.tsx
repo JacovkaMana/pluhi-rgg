@@ -17,7 +17,7 @@ export const PlayerMapModal = () => {
           <span>View Map</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-hide">
         <DialogHeader>
           <DialogTitle>Player Map</DialogTitle>
         </DialogHeader>

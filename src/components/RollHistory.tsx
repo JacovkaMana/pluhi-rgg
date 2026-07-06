@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 export interface RollEntry {
   id: string;
   timestamp: number;
-  type: "category" | "game";
+  type: "category" | "game" | "items";
   category?: string;
   categoryIcon?: string;
   game?: string;
+  items?: string[];
 }
 
 const STORAGE_KEY = "game-roulette-history";
@@ -44,7 +45,7 @@ export const RollHistory = ({ className }: RollHistoryProps) => {
     }
   }, [history]);
 
-  const addEntry = (type: "category" | "game", category?: string, categoryIcon?: string, game?: string) => {
+  const addEntry = (type: "category" | "game" | "items", category?: string, categoryIcon?: string, game?: string, items?: string[]) => {
     const newEntry: RollEntry = {
       id: `${Date.now()}-${Math.random()}`,
       timestamp: Date.now(),
@@ -52,6 +53,7 @@ export const RollHistory = ({ className }: RollHistoryProps) => {
       category,
       categoryIcon,
       game,
+      items,
     };
     setHistory((prev) => [newEntry, ...prev].slice(0, 50));
   };
@@ -116,23 +118,27 @@ export const RollHistory = ({ className }: RollHistoryProps) => {
                 key={entry.id}
                 className={cn(
                   "flex items-start gap-3 p-3 rounded-lg transition-colors",
-                  entry.type === "category" 
-                    ? "bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20" 
+                  entry.type === "category"
+                    ? "bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20"
+                    : entry.type === "items"
+                    ? "bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20"
                     : "bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20"
                 )}
               >
                 <div className="flex-shrink-0 text-2xl">
-                  {entry.categoryIcon}
+                  {entry.type === "items" ? "🎁" : entry.categoryIcon}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={cn(
                       "text-xs font-medium px-2 py-0.5 rounded",
-                      entry.type === "category" 
-                        ? "bg-purple-500/20 text-purple-300" 
+                      entry.type === "category"
+                        ? "bg-purple-500/20 text-purple-300"
+                        : entry.type === "items"
+                        ? "bg-amber-500/20 text-amber-300"
                         : "bg-blue-500/20 text-blue-300"
                     )}>
-                      {entry.type === "category" ? "Category" : "Game"}
+                      {entry.type === "category" ? "Category" : entry.type === "items" ? "Items" : "Game"}
                     </span>
                     <span className="text-[10px] text-muted-foreground/60">
                       • {formatTime(entry.timestamp)}
@@ -142,6 +148,14 @@ export const RollHistory = ({ className }: RollHistoryProps) => {
                     <p className="text-sm font-medium text-foreground truncate">
                       {entry.category}
                     </p>
+                  ) : entry.type === "items" ? (
+                    <div className="space-y-1">
+                      {entry.items?.map((item, idx) => (
+                        <p key={idx} className="text-sm font-medium text-foreground truncate">
+                          {item}
+                        </p>
+                      ))}
+                    </div>
                   ) : (
                     <>
                       <p className="text-xs text-muted-foreground mb-1">
@@ -179,6 +193,9 @@ export const useRollHistory = () => {
     },
     addGameEntry: (category: string, categoryIcon: string, game: string) => {
       (window as any).rollHistoryAPI?.addEntry("game", category, categoryIcon, game);
+    },
+    addItemsEntry: (items: string[]) => {
+      (window as any).rollHistoryAPI?.addEntry("items", "Items", "🎁", undefined, items);
     },
     clearHistory: () => {
       (window as any).rollHistoryAPI?.clearHistory();

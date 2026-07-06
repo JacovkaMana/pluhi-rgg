@@ -1,12 +1,25 @@
 import { usePlayers } from "@/hooks/usePlayers";
-import { Player } from "@/lib/supabase";
+import { Player } from "@/lib/sheets";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getTileConfig, getTileType, TileType, MINUS_TILES_START, MINUS_TILES_END, ZERO_TILE } from "@/lib/tileConfig";
+import { TOTAL_CELLS, MINUS_CELLS, CELLS_PER_ROW } from "@/config/mapConfig";
+import zonesConfig from "@/config/zones.json";
 
-const TOTAL_CELLS = 100;
-const MINUS_CELLS = 20;
-const CELLS_PER_ROW = 10;
+interface Zone {
+  id: string;
+  name: string;
+  ranges: number[][];
+  color: string;
+}
+
+const zones: Zone[] = zonesConfig.zones;
+
+const getCellZone = (cellNumber: number): Zone | undefined => {
+  return zones.find((zone) =>
+    zone.ranges.some(([start, end]) => cellNumber >= start && cellNumber <= end)
+  );
+};
 
 // Calculate cell position accounting for snake pattern (like board games)
 const getCellPosition = (cellNumber: number): { row: number; col: number } => {
@@ -26,6 +39,7 @@ const Cell = ({ number, players }: CellProps) => {
   const hasPlayers = players.length > 0;
   const tileConfig = getTileConfig(number);
   const tileType = getTileType(number);
+  const cellZone = getCellZone(number);
 
   const getTileStyles = (type: TileType) => {
     switch (type) {
@@ -40,6 +54,11 @@ const Cell = ({ number, players }: CellProps) => {
     }
   };
 
+  const zoneBorderStyle = cellZone ? {
+    borderColor: cellZone.color,
+    borderWidth: '2px',
+  } : {};
+
   // Display number: show negative sign for minus tiles
   const displayNumber = number < 0 ? `${number}` : number;
   
@@ -51,6 +70,7 @@ const Cell = ({ number, players }: CellProps) => {
         getTileStyles(tileType),
         hasPlayers && "ring-2 ring-primary/50 ring-offset-2 ring-offset-secondary/50"
       )}
+      style={zoneBorderStyle}
     >
       <span className={cn(
         "absolute top-1 left-1 text-[10px] text-muted-foreground font-mono",
@@ -77,11 +97,21 @@ const Cell = ({ number, players }: CellProps) => {
             <Tooltip key={player.id}>
               <TooltipTrigger asChild>
                 <div className="relative cursor-pointer group hover:scale-105 transition-transform duration-200">
-                  <img
-                    src={player.avatar}
-                    alt={player.name}
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-3 border-white shadow-lg object-cover"
-                  />
+                  {player.avatar ? (
+                    <img
+                      src={player.avatar}
+                      alt={player.name}
+                      className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-3 border-white shadow-lg object-cover"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-3 border-white shadow-lg bg-secondary flex items-center justify-center text-2xl">
+                      {player.avatarEmoji || '👤'}
+                    </div>
+                  )}
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-background text-[12px] px-2 rounded text-foreground font-medium truncate max-w-[70px]">
                     {player.name}
                   </div>
@@ -92,15 +122,28 @@ const Cell = ({ number, players }: CellProps) => {
                 className="bg-card border-border p-3 max-w-xs"
               >
                 <div className="flex items-start gap-3">
-                  <img
-                    src={player.avatar}
-                    alt={player.name}
-                    className="w-20 h-20 rounded-full border-3 border-primary shadow-lg"
-                  />
-                  <div>
+                  {player.avatar ? (
+                    <img
+                      src={player.avatar}
+                      alt={player.name}
+                      className="w-20 h-20 rounded-full border-3 border-primary shadow-lg object-cover"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full border-3 border-primary shadow-lg bg-secondary flex items-center justify-center text-4xl">
+                      {player.avatarEmoji || '👤'}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-foreground">{player.name}</h4>
-                    <p className="text-sm text-primary">Score: {player.score}</p>
-                    {player.items.length > 0 && (
+                    <div className="flex gap-3 text-sm text-muted-foreground mt-1">
+                      <span>Gold: <span className="text-primary font-medium">{player.gold}</span></span>
+                      <span>Score: <span className="text-amber-500 font-medium">{player.score}</span></span>
+                    </div>
+                    {player.items && player.items.length > 0 && (
                       <div className="mt-2">
                         <p className="text-xs text-muted-foreground mb-1">Items:</p>
                         <div className="flex flex-wrap gap-1">
@@ -111,6 +154,19 @@ const Cell = ({ number, players }: CellProps) => {
                             >
                               {item}
                             </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {player.games && player.games.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground mb-1">Games:</p>
+                        <div className="space-y-1 max-h-40 overflow-y-auto scrollbar-hide">
+                          {player.games.map((game, idx) => (
+                            <div key={idx} className="flex justify-between gap-2 text-xs">
+                              <span className="text-foreground truncate">{game.name}</span>
+                              <span className="text-muted-foreground shrink-0">+{game.result}</span>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -150,13 +206,10 @@ export const PlayerMap = () => {
   const playersByPosition = players.reduce((acc, player) => {
     let pos: number;
     if (player.score < 0) {
-      // Negative scores go to minus tiles
       pos = Math.max(player.score, MINUS_TILES_START);
     } else if (player.score === 0) {
-      // Zero goes to tile 0
       pos = ZERO_TILE;
     } else {
-      // Positive scores go to tiles 1-100
       pos = Math.min(Math.max(player.score, 1), TOTAL_CELLS);
     }
     if (!acc[pos]) acc[pos] = [];

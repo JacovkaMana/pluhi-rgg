@@ -1,40 +1,32 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase, GameCategory, Game } from "@/lib/supabase";
+import { fetchGames, fetchCategories, Game, Category } from "@/lib/sheets";
 import { getCategoryColor } from "@/lib/wheelUtils";
 
-// Helper function to check if icon is a URL
 export const isIconUrl = (icon: string): boolean => {
   return icon.startsWith("http://") || icon.startsWith("https://");
 };
 
-// Extended GameCategory with games array (computed from separate games table)
-export interface GameCategoryWithGames extends GameCategory {
+export interface GameCategoryWithGames extends Category {
   games: string[];
   weight: number;
   color: string;
 }
 
 export const useGameLists = () => {
-  const [categories, setCategories] = useState<GameCategory[]>([]);
   const [games, setGames] = useState<Game[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchGameLists = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Fetch both categories and games in parallel
-      const [categoriesRes, gamesRes] = await Promise.all([
-        supabase.from("game_categories").select("*").order("name"),
-        supabase.from("games").select("*").order("name")
+      const [gamesData, categoriesData] = await Promise.all([
+        fetchGames(),
+        fetchCategories(),
       ]);
-
-      if (categoriesRes.error) throw categoriesRes.error;
-      if (gamesRes.error) throw gamesRes.error;
-
-      setCategories(categoriesRes.data || []);
-      setGames(gamesRes.data || []);
+      setGames(gamesData);
+      setCategories(categoriesData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -43,24 +35,41 @@ export const useGameLists = () => {
   }, []);
 
   useEffect(() => {
-    fetchGameLists();
-  }, [fetchGameLists]);
+    fetchData();
+  }, [fetchData]);
 
-  // Compute categories with their games
   const lists = useMemo((): GameCategoryWithGames[] => {
-    return categories.map((category) => ({
-      ...category,
-      games: games
-        .filter((game) => game.category_id === category.id)
-        .map((game) => game.name),
-      // Use weight from database or default to 1
-      weight: (category as any).weight || 1,
-      // Use color from database or get from wheelUtils
-      color: (category as any).color || getCategoryColor(category.id),
-    }));
-  }, [categories, games]);
+    const categoryMap = new Map<string, { games: string[]; name: string; icon: string; weight: number; color: string }>();
+    
+    categories.forEach((cat) => {
+      categoryMap.set(cat.id, {
+        games: [],
+        name: cat.name,
+        icon: cat.icon,
+        weight: cat.weight,
+        color: cat.color || getCategoryColor(cat.id),
+      });
+    });
+    
+    games.forEach((game) => {
+      game.categories.forEach((catId) => {
+        if (!categoryMap.has(catId)) {
+          categoryMap.set(catId, { games: [], name: catId, icon: '🎮', weight: 1, color: getCategoryColor(catId) });
+        }
+        categoryMap.get(catId)!.games.push(game.name);
+      });
+    });
 
-  // Get a specific category by ID
+    return Array.from(categoryMap.entries()).map(([id, data]) => ({
+      id,
+      name: data.name,
+      icon: data.icon,
+      games: data.games,
+      weight: data.weight,
+      color: data.color,
+    }));
+  }, [games, categories]);
+
   const getCategoryById = useCallback(
     (id: string): GameCategoryWithGames | undefined => {
       return lists.find((list) => list.id === id);
@@ -68,7 +77,6 @@ export const useGameLists = () => {
     [lists]
   );
 
-  // Get a specific game from a category
   const getGameFromCategory = useCallback(
     (categoryId: string, gameIndex: number): string | undefined => {
       const category = getCategoryById(categoryId);
@@ -78,16 +86,17 @@ export const useGameLists = () => {
     [getCategoryById]
   );
 
-  // Get all games across all categories
   const getAllGames = useCallback((): string[] => {
     return lists.flatMap((list) => list.games || []);
   }, [lists]);
 
   return {
     lists,
+    games,
+    categories,
     loading,
     error,
-    refetch: fetchGameLists,
+    refetch: fetchData,
     getCategoryById,
     getGameFromCategory,
     getAllGames,

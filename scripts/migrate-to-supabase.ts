@@ -128,8 +128,10 @@ async function migrateGames() {
     
     // Create individual game entries
     for (const gameName of category.games) {
+      // Use game name only for ID so category changes update existing records
+      const gameId = gameName.toLowerCase().replace(/\s+/g, '-');
       games.push({
-        id: `${category.id}-${gameName.toLowerCase().replace(/\s+/g, '-')}`,
+        id: gameId,
         name: gameName,
         category_id: category.id
       });
