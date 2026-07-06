@@ -6,6 +6,8 @@ export interface Game {
   categories: string[];
   hours: number;
   author: string;
+  uploader: string;
+  challenge: string;
   created_at: string;
 }
 
@@ -104,6 +106,8 @@ export async function fetchGames(): Promise<Game[]> {
     categories: (row['Категории'] || '').split(',').map(c => c.trim()).filter(Boolean),
     hours: parseFloat(row['HLTB'] || '0') || 0,
     author: row['Кто добавил'] || 'unknown',
+    uploader: row['Кто добавил'] || 'unknown',
+    challenge: row['Испытание'] || row['Challenge'] || '',
     created_at: new Date().toISOString(),
   }));
 }

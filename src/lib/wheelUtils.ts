@@ -1,4 +1,5 @@
 import { GameCategoryWithGames } from "@/hooks/useGameLists";
+import { Game } from "@/lib/sheets";
 
 // Category colors for the wheel - each category gets a distinct color
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -45,45 +46,121 @@ const seededRandom = (): number => {
   return seed;
 };
 
-// Weighted random selection - returns a random game from all categories
-// based on category weights
-export const selectWeightedGame = (
+// Game with all its categories info for display
+export interface GameWithAllCategories {
+  game: string;
+  gameIndex: number;
+  categories: {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+  }[];
+}
+
+// Create flat list of all unique games with their ALL categories for the wheel display
+export const createGameListWithAllCategories = (
+  games: Game[],
   categories: GameCategoryWithGames[]
-): { game: string; category: GameCategoryWithGames } | null => {
-  if (categories.length === 0) return null;
+): GameWithAllCategories[] => {
+  const categoryMap = new Map<string, GameCategoryWithGames>();
+  categories.forEach(cat => categoryMap.set(cat.id, cat));
 
-  const totalWeight = calculateTotalWeight(categories);
-  if (totalWeight === 0) return null;
+  const result: GameWithAllCategories[] = [];
 
-  // Generate random number between 0 and totalWeight using seeded random
-  let random = seededRandom() * totalWeight;
+  for (let i = 0; i < games.length; i++) {
+    const game = games[i];
+    const gameCategories: GameWithAllCategories['categories'] = [];
 
-  // Find the category based on weight
-  for (const category of categories) {
-    const weight = category.weight || 1;
-    if (random < weight) {
-      // Select random game from this category using seeded random
-      const games = category.games || [];
-      if (games.length === 0) return null;
-      
-      const gameIndex = Math.floor(seededRandom() * games.length);
-      return {
-        game: games[gameIndex],
-        category,
-      };
+    for (const catId of game.categories) {
+      const category = categoryMap.get(catId);
+      if (category) {
+        gameCategories.push({
+          id: category.id,
+          name: category.name,
+          icon: category.icon,
+          color: getCategoryColor(category.id),
+        });
+      }
     }
-    random -= weight;
+
+    // Only include games that have at least one category
+    if (gameCategories.length > 0) {
+      result.push({
+        game: game.name,
+        gameIndex: i,
+        categories: gameCategories,
+      });
+    }
   }
 
-  // Fallback to first category if something goes wrong
-  const firstCategory = categories[0];
-  const games = firstCategory.games || [];
-  if (games.length === 0) return null;
-  
-  const gameIndex = Math.floor(seededRandom() * games.length);
+  return result;
+};
+
+// Weighted random selection - returns a random game from all categories
+// based on game weights (sum of their category weights)
+export const selectWeightedGame = (
+  games: Game[],
+  categories: GameCategoryWithGames[]
+): { game: string; gameIndex: number; category: GameCategoryWithGames } | null => {
+  if (games.length === 0 || categories.length === 0) return null;
+
+  const categoryMap = new Map<string, GameCategoryWithGames>();
+  categories.forEach(cat => categoryMap.set(cat.id, cat));
+
+  // Calculate weight for each game (sum of its category weights)
+  const gameWeights: { game: string; gameIndex: number; weight: number; category: GameCategoryWithGames }[] = [];
+
+  for (let i = 0; i < games.length; i++) {
+    const game = games[i];
+    if (game.categories.length === 0) continue;
+
+    let totalWeight = 0;
+    let randomCategory: GameCategoryWithGames | null = null;
+
+    for (const catId of game.categories) {
+      const category = categoryMap.get(catId);
+      if (category) {
+        totalWeight += category.weight || 1;
+        if (!randomCategory || Math.random() > 0.5) {
+          randomCategory = category;
+        }
+      }
+    }
+
+    if (totalWeight > 0 && randomCategory) {
+      gameWeights.push({
+        game: game.name,
+        gameIndex: i,
+        weight: totalWeight,
+        category: randomCategory,
+      });
+    }
+  }
+
+  if (gameWeights.length === 0) return null;
+
+  // Weighted selection
+  const totalWeight = gameWeights.reduce((sum, g) => sum + g.weight, 0);
+  let random = seededRandom() * totalWeight;
+
+  for (const gameWeight of gameWeights) {
+    if (random < gameWeight.weight) {
+      return {
+        game: gameWeight.game,
+        gameIndex: gameWeight.gameIndex,
+        category: gameWeight.category,
+      };
+    }
+    random -= gameWeight.weight;
+  }
+
+  // Fallback
+  const fallback = gameWeights[0];
   return {
-    game: games[gameIndex],
-    category: firstCategory,
+    game: fallback.game,
+    gameIndex: fallback.gameIndex,
+    category: fallback.category,
   };
 };
 
@@ -100,7 +177,7 @@ export const createGameListWithCategories = (
   categories: GameCategoryWithGames[]
 ): GameWithCategory[] => {
   const result: GameWithCategory[] = [];
-  
+
   for (const category of categories) {
     const color = getCategoryColor(category.id);
     for (const game of category.games || []) {
@@ -113,6 +190,6 @@ export const createGameListWithCategories = (
       });
     }
   }
-  
+
   return result;
 };

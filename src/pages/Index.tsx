@@ -1,48 +1,41 @@
 import { useState, useCallback } from "react";
-import { GameWheel } from "@/components/GameWheel";
-import { CategoryWheel } from "@/components/CategoryWheel";
 import { CustomWheel, CustomWheelOption } from "@/components/CustomWheel";
 import { CombinedWheel, WheelLegend } from "@/components/CombinedWheel";
 import { ItemsWheel } from "@/components/ItemsWheel";
-import { RollButtons } from "@/components/RollButtons";
-import { ResultDisplay } from "@/components/ResultDisplay";
 import { RollHistory, useRollHistory } from "@/components/RollHistory";
 import { PlayerMapModal } from "@/components/PlayerMapModal";
-import { GameList } from "@/components/GameList";
 import { RulesModal } from "@/components/RulesModal";
+import { AllGamesList } from "@/components/AllGamesList";
 import { useGameLists, GameCategoryWithGames } from "@/hooks/useGameLists";
 import { useCustomWheels } from "@/hooks/useCustomWheels";
 import { useItems } from "@/hooks/useItems";
-import { Sparkles, ToggleLeft, ToggleRight, Layers, Zap, Package } from "lucide-react";
+import { Game } from "@/lib/sheets";
+import { Sparkles, Layers, Zap, Package, List, X, User, MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Item } from "@/lib/sheets";
 
-type RouletteMode = "games" | "combined" | "custom" | "items";
+type RouletteMode = "browse" | "combined" | "custom" | "items";
 
 const Index = () => {
-  const { lists, loading: listsLoading } = useGameLists();
+  const { lists, games, loading: listsLoading } = useGameLists();
   const { wheels, loading: wheelsLoading } = useCustomWheels();
   const { items, loading: itemsLoading, getNormalItems } = useItems();
   const { addCategoryEntry, addGameEntry, addItemsEntry } = useRollHistory();
-  
+
   // Mode state
   const [mode, setMode] = useState<RouletteMode>("combined");
-  
-  // Category state
-  const [selectedCategory, setSelectedCategory] = useState<GameCategoryWithGames | null>(null);
-  const [isCategorySpinning, setIsCategorySpinning] = useState(false);
+
+  // Category state - for disabling categories in combined wheel
   const [disabledCategories, setDisabledCategories] = useState<string[]>([]);
-  
-  // Game state
-  const [isGameSpinning, setIsGameSpinning] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  
+
   // Combined wheel state
   const [isCombinedSpinning, setIsCombinedSpinning] = useState(false);
   const [combinedResult, setCombinedResult] = useState<{ game: string; category: GameCategoryWithGames } | null>(null);
-  
+  const [selectedGameInfo, setSelectedGameInfo] = useState<Game | null>(null);
+
   // Custom wheel state
   const [selectedCustomWheel, setSelectedCustomWheel] = useState<string | null>(null);
   const [isCustomSpinning, setIsCustomSpinning] = useState(false);
@@ -52,53 +45,14 @@ const Index = () => {
   const [isItemsSpinning, setIsItemsSpinning] = useState(false);
   const [itemsResult, setItemsResult] = useState<Item[] | null>(null);
 
-  const handleRollCategory = () => {
-    if (lists.length === 0 || isCategorySpinning || isGameSpinning) return;
-    setIsCategorySpinning(true);
-    setSelectedCategory(null);
-    setResult(null);
-  };
-
-  const handleCategorySpinComplete = useCallback((category: GameCategoryWithGames) => {
-    setIsCategorySpinning(false);
-    setSelectedCategory(category);
-    // Add category roll to history
-    addCategoryEntry(category.name, category.icon);
-  }, [addCategoryEntry]);
-
-  const handleCategoryClick = useCallback((category: GameCategoryWithGames) => {
-    // Select the category for game rolling
-    setSelectedCategory(category);
-  }, []);
-
   const handleCategoryDisable = useCallback((category: GameCategoryWithGames, e: React.MouseEvent) => {
     e.stopPropagation();
     if (disabledCategories.includes(category.id)) {
-      // Re-enable category
       setDisabledCategories(prev => prev.filter(id => id !== category.id));
     } else {
-      // Disable category
       setDisabledCategories(prev => [...prev, category.id]);
     }
   }, [disabledCategories]);
-
-  const allCategoriesDisabled = lists.length > 0 && lists.every(list => disabledCategories.includes(list.id));
-
-  const handleRollGame = () => {
-    if (!selectedCategory || isGameSpinning || isCategorySpinning) return;
-    setIsGameSpinning(true);
-    setResult(null);
-  };
-
-  const handleGameSpinComplete = useCallback((game: string) => {
-    setIsGameSpinning(false);
-    setResult(game);
-    
-    // Add game roll to history
-    if (selectedCategory) {
-      addGameEntry(selectedCategory.name, selectedCategory.icon, game);
-    }
-  }, [selectedCategory, addGameEntry]);
 
   const handleRollCombined = () => {
     if (lists.length === 0 || isCombinedSpinning) return;
@@ -110,9 +64,10 @@ const Index = () => {
   const handleCombinedSpinComplete = useCallback((game: string, category: GameCategoryWithGames) => {
     setIsCombinedSpinning(false);
     setCombinedResult({ game, category });
-    // Add to history
+    const fullGame = games.find(g => g.name === game);
+    setSelectedGameInfo(fullGame || null);
     addGameEntry(category.name, category.icon, game);
-  }, [addGameEntry]);
+  }, [games, addGameEntry]);
 
   const handleRollCustom = () => {
     if (!selectedCustomWheel || isCustomSpinning) return;
@@ -162,7 +117,7 @@ const Index = () => {
             {/* Player Map Modal */}
             <PlayerMapModal />
             
-            {/* Mode Toggle - now with 3 options */}
+            {/* Mode Toggle - now with 4 options */}
             <div className="flex items-center gap-1 bg-blue-500/10 border border-blue-500/30 rounded-lg p-1">
               <Button
                 variant="ghost"
@@ -181,6 +136,20 @@ const Index = () => {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => setMode("browse")}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200",
+                  mode === "browse"
+                    ? "bg-blue-500/30 text-blue-200"
+                    : "text-blue-300/60 hover:text-blue-300 hover:bg-blue-500/20"
+                )}
+              >
+                <List className="w-4 h-4" />
+                <span className="text-xs">Games</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setMode("custom")}
                 className={cn(
                   "flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200",
@@ -191,20 +160,6 @@ const Index = () => {
               >
                 <Zap className="w-4 h-4" />
                 <span className="text-xs">Custom</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMode("games")}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200",
-                  mode === "games"
-                    ? "bg-blue-500/30 text-blue-200"
-                    : "text-blue-300/60 hover:text-blue-300 hover:bg-blue-500/20"
-                )}
-              >
-                <ToggleLeft className="w-4 h-4" />
-                <span className="text-xs">Step</span>
               </Button>
               <Button
                 variant="ghost"
@@ -244,8 +199,11 @@ const Index = () => {
                 ) : (
                   <CombinedWheel
                     categories={lists.filter(list => !disabledCategories.includes(list.id))}
+                    games={games}
                     isSpinning={isCombinedSpinning}
                     onSpinComplete={handleCombinedSpinComplete}
+                    disabledCategories={disabledCategories}
+                    onCategoryDisable={handleCategoryDisable}
                   />
                 )}
               </Card>
@@ -253,7 +211,13 @@ const Index = () => {
               {/* Legend with drop chances */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="border border-border p-4">
-                  <WheelLegend categories={lists.filter(list => !disabledCategories.includes(list.id))} />
+                  <WheelLegend
+                    categories={lists.filter(list => !disabledCategories.includes(list.id))}
+                    allCategories={lists}
+                    totalGames={games.length}
+                    disabledCategories={disabledCategories}
+                    onCategoryDisable={handleCategoryDisable}
+                  />
                 </Card>
                 
                 {/* Roll Button for Combined */}
@@ -278,72 +242,63 @@ const Index = () => {
               </div>
 
               {/* Combined Result Display */}
-              {combinedResult && (
-                <Card className="border border-purple-500/30 bg-purple-500/10 p-6 text-center">
-                  <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
-                    <span className="text-2xl">{combinedResult.category.icon}</span>
-                    <span className="text-sm">{combinedResult.category.name}</span>
+              {combinedResult && selectedGameInfo && (
+                <Card className="border border-purple-500/30 bg-purple-500/10 p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 text-center">
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground mb-2">
+                        <span className="text-2xl">{combinedResult.category.icon}</span>
+                        <span className="text-sm">{combinedResult.category.name}</span>
+                      </div>
+                      <h2 className="text-3xl font-bold text-foreground text-glow mb-2">
+                        {combinedResult.game}
+                      </h2>
+                      {selectedGameInfo.uploader && (
+                        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-1">
+                          <User className="w-4 h-4" />
+                          <span>{selectedGameInfo.uploader}</span>
+                        </div>
+                      )}
+                      {selectedGameInfo.challenge && (
+                        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                          <MapPin className="w-4 h-4" />
+                          <span>{selectedGameInfo.challenge}</span>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setSelectedGameInfo(null)}
+                      className="p-1 rounded hover:bg-purple-500/20 transition-colors"
+                    >
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
                   </div>
-                  <h2 className="text-3xl font-bold text-foreground text-glow">
-                    {combinedResult.game}
-                  </h2>
+                  <div className="flex flex-wrap justify-center gap-1 mt-3">
+                    {selectedGameInfo.categories.map((cat) => (
+                      <Badge key={cat} className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+                        {cat}
+                      </Badge>
+                    ))}
+                  </div>
                 </Card>
               )}
             </>
-          ) : mode === "games" ? (
+          ) : mode === "browse" ? (
             <>
-              {/* Category Wheel */}
+              {/* All Games List - Browse all games */}
               <Card className="border border-border p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4 text-center">
-                  Select Category
+                <h2 className="text-lg font-semibold text-foreground mb-4 text-center flex items-center justify-center gap-2">
+                  <List className="w-5 h-5 text-blue-400" />
+                  Browse Games
                 </h2>
                 {listsLoading ? (
                   <div className="flex justify-center">
                     <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
                   </div>
                 ) : (
-              <CategoryWheel
-                categories={lists.filter(list => !disabledCategories.includes(list.id))}
-                isSpinning={isCategorySpinning}
-                onSpinComplete={handleCategorySpinComplete}
-                onCategoryClick={handleCategoryClick}
-                onCategoryDisable={handleCategoryDisable}
-                disabledCategories={disabledCategories}
-                selectedCategoryId={selectedCategory?.id || null}
-              />
+                  <AllGamesList games={games} />
                 )}
               </Card>
-
-              {/* Game Wheel */}
-              <Card className="border border-border p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4 text-center">
-                  {selectedCategory ? `${selectedCategory.name} Games` : "Select a category first"}
-                </h2>
-                <GameWheel
-                  games={selectedCategory?.games || []}
-                  isSpinning={isGameSpinning}
-                  onSpinComplete={handleGameSpinComplete}
-                />
-              </Card>
-
-              {/* Roll Buttons */}
-              <RollButtons
-                onRollCategory={handleRollCategory}
-                onRollGame={handleRollGame}
-                isCategorySpinning={isCategorySpinning}
-                isGameSpinning={isGameSpinning}
-                categorySelected={!!selectedCategory}
-                disabled={lists.length === 0}
-                allCategoriesDisabled={allCategoriesDisabled}
-              />
-
-              {/* Result Display */}
-              <section className="min-h-24">
-                <ResultDisplay
-                  game={result}
-                  listName={selectedCategory?.name || null}
-                />
-              </section>
             </>
           ) : mode === "items" ? (
             <>
@@ -493,15 +448,6 @@ const Index = () => {
               )}
             </>
           )}
-
-          {/* Game List for Selected Category */}
-          {selectedCategory && (
-            <GameList 
-              games={selectedCategory.games} 
-              categoryName={selectedCategory.name} 
-              categoryIcon={selectedCategory.icon} 
-            />
-          )}
         </div>
 
         {/* Right side - Enlarged Roll History */}
@@ -517,8 +463,8 @@ const Index = () => {
         <div className="max-w-7xl mx-auto text-center text-sm text-muted-foreground">
           {mode === "combined"
             ? (combinedResult ? `${combinedResult.category.name} - ${combinedResult.game}` : "Roll the combined wheel!")
-            : mode === "games"
-              ? (selectedCategory?.name || "Roll a category to start")
+            : mode === "browse"
+              ? "Browse all games"
               : mode === "items"
                 ? "Roll for random items"
                 : (selectedWheel?.name || "Select a custom wheel to start")
