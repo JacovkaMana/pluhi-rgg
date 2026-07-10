@@ -7,7 +7,8 @@ stop_session() {
     local session_name="$1"
     local display_name="$2"
 
-    if screen -list | grep -q "$session_name"; then
+    # Safely check for the exact session name
+    if screen -list "$session_name" > /dev/null 2>&1; then
         screen -X -S "$session_name" quit
         echo "$display_name stopped."
     else
