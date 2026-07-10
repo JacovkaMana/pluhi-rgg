@@ -274,36 +274,29 @@ export const CombinedWheel = ({
   );
 };
 
-// Legend component showing categories and their drop chances
-interface WheelLegendProps {
+// Category Manager - compact panel for managing all categories
+interface CategoryManagerProps {
   categories: GameCategoryWithGames[];
-  allCategories: GameCategoryWithGames[];
-  totalGames: number;
   disabledCategories?: string[];
   onCategoryDisable?: (category: GameCategoryWithGames, e: React.MouseEvent) => void;
 }
 
-export const WheelLegend = ({
+export const CategoryManager = ({
   categories,
-  allCategories,
-  totalGames,
   disabledCategories = [],
   onCategoryDisable,
-}: WheelLegendProps) => {
-  // Show only enabled categories for drop chance calculations
-  const enabledCategories = categories;
-  const totalWeight = calculateTotalWeight(enabledCategories);
+}: CategoryManagerProps) => {
+  const totalWeight = calculateTotalWeight(categories);
 
-  // Sort categories by weight (highest first)
-  const sortedCategories = [...allCategories].sort((a, b) => (b.weight || 1) - (a.weight || 1));
+  const sortedCategories = [...categories].sort((a, b) => (b.weight || 1) - (a.weight || 1));
 
   return (
     <div className="bg-card border border-border rounded-xl p-4">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-        <span className="text-lg">🎯</span>
-        Drop Chances
+        <span className="text-lg">⚙️</span>
+        Categories
       </h3>
-      <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-hide">
+      <div className="grid grid-cols-3 gap-1 max-h-48 overflow-y-auto scrollbar-hide">
         {sortedCategories.map((category) => {
           const isDisabled = disabledCategories.includes(category.id);
           const chance = isDisabled ? 0 : calculateDropChance(category, totalWeight);
@@ -312,53 +305,42 @@ export const WheelLegend = ({
           return (
             <div
               key={category.id}
-              className="flex items-center justify-between gap-2 text-sm"
+              className="flex items-center justify-between gap-1 text-xs py-1 px-2 rounded hover:bg-secondary/30 transition-colors cursor-pointer"
+              onClick={(e) => onCategoryDisable?.(category, e)}
             >
-              <div
-                onClick={(e) => onCategoryDisable?.(category, e)}
-                className={cn(
-                  "flex items-center gap-2 cursor-pointer transition-opacity flex-1",
-                  isDisabled && "opacity-40"
-                )}
-              >
+              <div className="flex items-center gap-1.5 min-w-0">
                 <div
                   className={cn(
-                    "w-3 h-3 rounded-full transition-all",
-                    isDisabled && "opacity-50"
+                    "w-2 h-2 rounded-full shrink-0",
+                    isDisabled && "opacity-40"
                   )}
                   style={{ backgroundColor: color }}
                 />
-                <span className="text-muted-foreground">{category.icon}</span>
-                <span className={cn("text-foreground", isDisabled && "line-through")}>
+                <span className={cn(
+                  "text-foreground truncate",
+                  isDisabled && "line-through opacity-50"
+                )}>
                   {category.name}
                 </span>
-                {isDisabled && (
-                  <span className="text-xs text-muted-foreground">(off)</span>
-                )}
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-20 h-2 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      isDisabled && "opacity-30"
-                    )}
-                    style={{
-                      width: `${chance}%`,
-                      backgroundColor: color,
-                    }}
-                  />
-                </div>
-                <span className="text-muted-foreground text-xs w-12 text-right">
-                  {isDisabled ? "0.0%" : `${chance.toFixed(1)}%`}
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-muted-foreground text-[10px]">
+                  {chance.toFixed(0)}%
                 </span>
+                <button
+                  className={cn(
+                    "w-4 h-4 rounded text-[10px] font-bold transition-all flex items-center justify-center",
+                    isDisabled
+                      ? "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+                      : "bg-primary/20 text-primary hover:bg-primary/30"
+                  )}
+                >
+                  {isDisabled ? "+" : "×"}
+                </button>
               </div>
             </div>
           );
         })}
-      </div>
-      <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground text-center">
-        Total: {totalGames} games
       </div>
     </div>
   );

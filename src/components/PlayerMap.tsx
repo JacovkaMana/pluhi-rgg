@@ -1,10 +1,17 @@
+import { useState } from "react";
 import { usePlayers } from "@/hooks/usePlayers";
-import { Player } from "@/lib/sheets";
+import { useGameLists } from "@/hooks/useGameLists";
+import { useItems } from "@/hooks/useItems";
+import { Player, Game, Item } from "@/lib/sheets";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { PlayerDetailModal } from "@/components/PlayerDetailModal";
+import { GameDetailModal } from "@/components/GameDetailModal";
+import { ItemDetailModal } from "@/components/ItemDetailModal";
 import { cn } from "@/lib/utils";
 import { getTileConfig, getTileType, TileType, MINUS_TILES_START, MINUS_TILES_END, ZERO_TILE } from "@/lib/tileConfig";
 import { TOTAL_CELLS, MINUS_CELLS, CELLS_PER_ROW } from "@/config/mapConfig";
 import zonesConfig from "@/config/zones.json";
+import { Badge } from "@/components/ui/badge";
 
 interface Zone {
   id: string;
@@ -33,9 +40,12 @@ const getCellPosition = (cellNumber: number): { row: number; col: number } => {
 interface CellProps {
   number: number;
   players: Player[];
+  onPlayerClick: (player: Player) => void;
+  onGameClick: (gameName: string) => void;
+  onItemClick: (itemName: string) => void;
 }
 
-const Cell = ({ number, players }: CellProps) => {
+const Cell = ({ number, players, onPlayerClick, onGameClick, onItemClick }: CellProps) => {
   const hasPlayers = players.length > 0;
   const tileConfig = getTileConfig(number);
   const tileType = getTileType(number);
@@ -44,11 +54,9 @@ const Cell = ({ number, players }: CellProps) => {
   const getTileStyles = (type: TileType) => {
     switch (type) {
       case 'shiny':
-        return 'bg-gradient-to-br from-yellow-400/20 to-amber-500/20 border-yellow-500/50 hover:from-yellow-400/30 hover:to-amber-500/30';
       case 'red':
-        return 'bg-gradient-to-br from-red-500/20 to-rose-600/20 border-red-500/50 hover:from-red-500/30 hover:to-rose-600/30';
       case 'minus':
-        return 'bg-gradient-to-br from-violet-500/20 to-purple-600/20 border-violet-500/50 hover:from-violet-500/30 hover:to-purple-600/30';
+        return 'bg-secondary/30 hover:bg-secondary/50';
       default:
         return 'bg-secondary/30 hover:bg-secondary/50';
     }
@@ -80,7 +88,12 @@ const Cell = ({ number, players }: CellProps) => {
       </span>
       
       {tileConfig.label && (
-        <span className="absolute top-1 right-1 text-xs">
+        <span className={cn(
+          "absolute top-1 right-1 text-sm font-bold",
+          tileType === 'shiny' && "text-yellow-500",
+          tileType === 'red' && "text-red-500",
+          tileType === 'minus' && "text-violet-500"
+        )}>
           {tileConfig.label}
         </span>
       )}
@@ -96,7 +109,13 @@ const Cell = ({ number, players }: CellProps) => {
           {players.map((player) => (
             <Tooltip key={player.id}>
               <TooltipTrigger asChild>
-                <div className="relative cursor-pointer group hover:scale-105 transition-transform duration-200">
+                <div
+                  className="relative cursor-pointer group hover:scale-105 transition-transform duration-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPlayerClick(player);
+                  }}
+                >
                   {player.avatar ? (
                     <img
                       src={player.avatar}
@@ -148,12 +167,14 @@ const Cell = ({ number, players }: CellProps) => {
                         <p className="text-xs text-muted-foreground mb-1">Items:</p>
                         <div className="flex flex-wrap gap-1">
                           {player.items.map((item, idx) => (
-                            <span
+                            <Badge
                               key={idx}
-                              className="text-xs bg-secondary px-1.5 py-0.5 rounded text-foreground"
+                              variant="secondary"
+                              className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                              onClick={() => onItemClick(item)}
                             >
                               {item}
-                            </span>
+                            </Badge>
                           ))}
                         </div>
                       </div>
@@ -163,7 +184,11 @@ const Cell = ({ number, players }: CellProps) => {
                         <p className="text-xs text-muted-foreground mb-1">Games:</p>
                         <div className="space-y-1 max-h-40 overflow-y-auto scrollbar-hide">
                           {player.games.map((game, idx) => (
-                            <div key={idx} className="flex justify-between gap-2 text-xs">
+                            <div
+                              key={idx}
+                              className="flex justify-between gap-2 text-xs cursor-pointer hover:bg-secondary/50 p-1 rounded transition-colors"
+                              onClick={() => onGameClick(game.name)}
+                            >
                               <span className="text-foreground truncate">{game.name}</span>
                               <span className="text-muted-foreground shrink-0">+{game.result}</span>
                             </div>
@@ -184,6 +209,44 @@ const Cell = ({ number, players }: CellProps) => {
 
 export const PlayerMap = () => {
   const { players, loading, error } = usePlayers();
+  const { games: allGames } = useGameLists();
+  const { items: allItems } = useItems();
+
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [playerModalOpen, setPlayerModalOpen] = useState(false);
+  const [gameModalOpen, setGameModalOpen] = useState(false);
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+
+  const getGameByName = (name: string): Game | undefined => {
+    return allGames.find((g) => g.name === name);
+  };
+
+  const getItemByName = (name: string): Item | undefined => {
+    return allItems.find((i) => i.name === name);
+  };
+
+  const handlePlayerClick = (player: Player) => {
+    setSelectedPlayer(player);
+    setPlayerModalOpen(true);
+  };
+
+  const handleGameClick = (gameName: string) => {
+    const game = getGameByName(gameName);
+    if (game) {
+      setSelectedGame(game);
+      setGameModalOpen(true);
+    }
+  };
+
+  const handleItemClick = (itemName: string) => {
+    const item = getItemByName(itemName);
+    if (item) {
+      setSelectedItem(item);
+      setItemModalOpen(true);
+    }
+  };
 
   if (loading) {
     return (
@@ -201,8 +264,6 @@ export const PlayerMap = () => {
     );
   }
 
-  // Group players by their score (position on board)
-  // Handle both negative (-20 to -1), zero, and positive (1-100) positions
   const playersByPosition = players.reduce((acc, player) => {
     let pos: number;
     if (player.score < 0) {
@@ -217,13 +278,11 @@ export const PlayerMap = () => {
     return acc;
   }, {} as Record<number, Player[]>);
 
-  // Build grid rows for main board (from top to bottom, but cells numbered from bottom)
   const rows: number[][] = [];
   for (let row = 0; row < TOTAL_CELLS / CELLS_PER_ROW; row++) {
     const startCell = TOTAL_CELLS - row * CELLS_PER_ROW;
     const rowCells: number[] = [];
     for (let col = 0; col < CELLS_PER_ROW; col++) {
-      // Snake pattern
       const cell = row % 2 === 0
         ? startCell - col
         : startCell - (CELLS_PER_ROW - 1 - col);
@@ -232,7 +291,6 @@ export const PlayerMap = () => {
     rows.push(rowCells);
   }
 
-  // Build minus tiles row (-1 to -40, displayed left to right)
   const minusRow: number[] = [];
   for (let i = MINUS_TILES_END; i >= MINUS_TILES_START; i--) {
     minusRow.push(i);
@@ -248,6 +306,9 @@ export const PlayerMap = () => {
               key={cellNum}
               number={cellNum}
               players={playersByPosition[cellNum] || []}
+              onPlayerClick={handlePlayerClick}
+              onGameClick={handleGameClick}
+              onItemClick={handleItemClick}
             />
           ))
         ))}
@@ -260,6 +321,9 @@ export const PlayerMap = () => {
             key={ZERO_TILE}
             number={ZERO_TILE}
             players={playersByPosition[ZERO_TILE] || []}
+            onPlayerClick={handlePlayerClick}
+            onGameClick={handleGameClick}
+            onItemClick={handleItemClick}
           />
         </div>
       </div>
@@ -271,33 +335,54 @@ export const PlayerMap = () => {
             key={cellNum}
             number={cellNum}
             players={playersByPosition[cellNum] || []}
+            onPlayerClick={handlePlayerClick}
+            onGameClick={handleGameClick}
+            onItemClick={handleItemClick}
           />
         ))}
       </div>
-      
+
       <div className="mt-4 flex flex-col items-center gap-2">
         <div className="text-sm text-muted-foreground">
-          Hover over players to see their items
+          Click on players to see details
         </div>
-        <div className="flex flex-wrap justify-center gap-4 text-xs">
+        <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-yellow-400/20 to-amber-500/20 border border-yellow-500/50" />
-            <span className="text-muted-foreground">★ Shiny (5, 10, 15...80)</span>
+            <span className="text-yellow-500 font-bold">★</span>
+            <span>Shiny (5, 10, 15...80)</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-red-500/20 to-rose-600/20 border border-red-500/50" />
-            <span className="text-muted-foreground">⚠ Danger (81-100)</span>
+            <span className="text-red-500 font-bold">⚠</span>
+            <span>Danger (81-100)</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-violet-500/20 to-purple-600/20 border border-violet-500/50" />
-            <span className="text-muted-foreground">− Minus (−20 to −1)</span>
+            <span className="text-violet-500 font-bold">−</span>
+            <span>Minus (−20 to −1)</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-4 h-4 rounded bg-gradient-to-br from-gray-500/20 to-gray-600/20 border border-gray-500/50" />
-            <span className="text-muted-foreground">0 Zero</span>
+            <span className="text-muted-foreground">0</span>
+            <span>Zero</span>
           </div>
         </div>
       </div>
+
+      <PlayerDetailModal
+        player={selectedPlayer}
+        open={playerModalOpen}
+        onOpenChange={setPlayerModalOpen}
+      />
+
+      <GameDetailModal
+        game={selectedGame}
+        open={gameModalOpen}
+        onOpenChange={setGameModalOpen}
+      />
+
+      <ItemDetailModal
+        item={selectedItem}
+        open={itemModalOpen}
+        onOpenChange={setItemModalOpen}
+      />
     </div>
   );
 };

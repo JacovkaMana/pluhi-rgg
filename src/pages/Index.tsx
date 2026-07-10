@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { CustomWheel, CustomWheelOption } from "@/components/CustomWheel";
-import { CombinedWheel, WheelLegend } from "@/components/CombinedWheel";
+import { CombinedWheel, CategoryManager } from "@/components/CombinedWheel";
 import { ItemsWheel } from "@/components/ItemsWheel";
 import { RollHistory, useRollHistory } from "@/components/RollHistory";
 import { PlayerMapModal } from "@/components/PlayerMapModal";
@@ -208,37 +208,33 @@ const Index = () => {
                 )}
               </Card>
 
-              {/* Legend with drop chances */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="border border-border p-4">
-                  <WheelLegend
-                    categories={lists.filter(list => !disabledCategories.includes(list.id))}
-                    allCategories={lists}
-                    totalGames={games.length}
-                    disabledCategories={disabledCategories}
-                    onCategoryDisable={handleCategoryDisable}
-                  />
-                </Card>
-                
-                {/* Roll Button for Combined */}
-                <div className="flex items-center justify-center">
-                  <Button
-                    onClick={handleRollCombined}
-                    disabled={lists.length === 0 || isCombinedSpinning}
-                    size="lg"
-                    className={cn(
-                      "px-16 py-6 rounded-2xl font-bold text-2xl",
-                      "bg-purple-500/10 border-2 border-purple-500/30 text-purple-300",
-                      "transition-all duration-300 transform",
-                      "hover:bg-purple-500/20 hover:border-purple-500/50 hover:scale-105 active:scale-95",
-                      "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100",
-                      !isCombinedSpinning && lists.length > 0 && "animate-pulse-glow",
-                      isCombinedSpinning && "cursor-wait"
-                    )}
-                  >
-                    {isCombinedSpinning ? "Rolling..." : "Roll All"}
-                  </Button>
-                </div>
+              {/* Category Manager */}
+              <Card className="border border-border p-4">
+                <CategoryManager
+                  categories={lists}
+                  disabledCategories={disabledCategories}
+                  onCategoryDisable={handleCategoryDisable}
+                />
+              </Card>
+              
+              {/* Roll Button for Combined */}
+              <div className="flex justify-center">
+                <Button
+                  onClick={handleRollCombined}
+                  disabled={lists.length === 0 || isCombinedSpinning}
+                  size="lg"
+                  className={cn(
+                    "px-16 py-6 rounded-2xl font-bold text-2xl",
+                    "bg-purple-500/10 border-2 border-purple-500/30 text-purple-300",
+                    "transition-all duration-300 transform",
+                    "hover:bg-purple-500/20 hover:border-purple-500/50 hover:scale-105 active:scale-95",
+                    "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100",
+                    !isCombinedSpinning && lists.length > 0 && "animate-pulse-glow",
+                    isCombinedSpinning && "cursor-wait"
+                  )}
+                >
+                  {isCombinedSpinning ? "Rolling..." : "Roll All"}
+                </Button>
               </div>
 
               {/* Combined Result Display */}

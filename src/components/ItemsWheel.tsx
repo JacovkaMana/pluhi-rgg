@@ -8,7 +8,7 @@ interface ItemsWheelProps {
   onSpinComplete: (results: Item[]) => void;
 }
 
-const TOTAL_SPINS = 500;
+const TOTAL_SPINS = 50;
 
 export const ItemsWheel = ({
   items,

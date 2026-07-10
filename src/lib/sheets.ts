@@ -172,13 +172,15 @@ export async function fetchItems(): Promise<Item[]> {
   const { data: rows, cols } = await fetchSheet('Предметы');
   const tableData = parseTable(rows, cols);
 
-  return tableData.map((row, index) => ({
-    id: `item_${index}`,
-    name: row['Имя'] || '',
-    type: row['Тип'] || 'misc',
-    description: row['Описание'] || '',
-    cost: parseInt(row['Стоимость'] || '0', 10) || 0,
-  }));
+  return tableData
+    .map((row, index) => ({
+      id: `item_${index}`,
+      name: row['Имя'] || '',
+      type: row['Тип'] || 'misc',
+      description: row['Описание'] || '',
+      cost: parseInt(row['Стоимость'] || '0', 10) || 0,
+    }))
+    .filter((item) => item.cost >= 0);
 }
 
 export async function fetchCategories(): Promise<Category[]> {
